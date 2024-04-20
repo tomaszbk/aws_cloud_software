@@ -1,0 +1,20 @@
+laptop,status,brand,model,cpu,ram,storage,storage type,gpu,screen,touch,final price,image
+"ASUS ExpertBook B1 B1502CBA-EJ0436X",New,Asus,ExpertBook,Intel Core i5,8,512,SSD,,15.6,No,1008.9999999999999,img/laptop-1.jpg
+"Alurin Go Start",New,Alurin,Go,Intel Celeron,8,256,SSD,,15.6,No,299.0,img/laptop-2.jpg
+"ASUS ExpertBook B1 B1502CBA-EJ0424X",New,Asus,ExpertBook,Intel Core i3,8,256,SSD,,15.6,No,789.0,img/laptop-3.jpg
+"MSI Katana GF66 12UC-082XES",New,MSI,Katana,Intel Core i7,16,1000,SSD,RTX 3050,15.6,No,1199.0,img/laptop-4.jpg
+"HP 15S-FQ5085NS",New,HP,15S,Intel Core i5,16,512,SSD,,15.6,No,669.01,img/laptop-5.jpg
+"MSI Crosshair 17 C12VF-264XES",New,MSI,Crosshair,Intel Core i7,32,1000,SSD,RTX 4060,17.3,No,1699.0,img/laptop-6.jpg
+"Lenovo Thinkpad E14",New,Lenovo,ThinkPad,AMD Ryzen 5,8,256,SSD,,14.0,No,909.0,img/laptop-7.jpg
+"ASUS VivoBook 15 F515JA-EJ2882W",New,Asus,VivoBook,Intel Core i7,8,512,SSD,,15.6,No,809.01,img/laptop-8.jpg
+"Medion Akoya E15415",New,Medion,Akoya,Intel Core i5,8,256,SSD,,15.6,No,519.0,img/laptop-9.jpg
+"HP Victus 16-d1038ns",New,HP,Victus,Intel Core i7,16,512,SSD,RTX 3050,16.1,No,1149.0,img/laptop-10.jpg
+"Lenovo V15 IGL",New,Lenovo,V15,Intel Celeron,8,256,SSD,,15.6,No,349.0,img/laptop-11.jpg
+"MSI Thin GF63 12VE-021XES",New,MSI,Thin,Intel Core i7,16,1000,SSD,RTX 4050,15.6,No,1399.0,img/laptop-12.jpg
+"ASUS ROG Strix G15 G513RC-HN088",New,Asus,ROG,AMD Ryzen 7,16,512,SSD,RTX 3050,15.6,No,1199.0,img/laptop-13.jpg
+"Lenovo V15 G3 ABA",New,Lenovo,V15,AMD Ryzen 5,16,512,SSD,,15.6,No,476.99,img/laptop-14.jpg
+"Lenovo IdeaPad 1 15ADA7",New,Lenovo,IdeaPad,AMD Ryzen 3,8,256,SSD,,15.6,No,391.0,img/laptop-15.jpg
+"HP 15S-FQ5013NS",New,HP,15S,Intel Core i5,8,512,SSD,,15.6,No,699.0,img/laptop-16.jpg
+"Lenovo IdeaPad 3 15IAU7",New,Lenovo,IdeaPad,Intel Core i5,16,512,SSD,,15.6,No,799.0,img/laptop-17.jpg
+"HP 15S-FQ2163NS",New,HP,15S,Intel Core i3,8,512,SSD,,15.6,No,549.0,img/laptop-18.jpg
+"ASUS VivoBook 15 F515JA-EJ4134",New,Asus,VivoBook,Intel Core i7,8,512,SSD,,15.6,No,769.0,img/laptop-19.jpg
