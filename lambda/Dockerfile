@@ -1,15 +1,11 @@
-FROM public.ecr.aws/lambda/python:3.12
-
-# Copy requirements.txt
-COPY requirements.txt ${LAMBDA_TASK_ROOT}
-
-# Install the specified packages
-RUN pip install -r requirements.txt
-
-# Copy function code
-COPY lambda_function.py ${LAMBDA_TASK_ROOT}
-
-EXPOSE 8080
-
-# Set the CMD to your handler (could also be done as a parameter override outside of the Dockerfile)
-CMD [ "lambda_function.my_first_lambda_function" ]
+FROM golang:1.22 as build
+WORKDIR /helloworld
+# Copy dependencies list
+COPY go.mod go.sum ./
+# Build with optional lambda.norpc tag
+COPY main.go .
+RUN go build -tags lambda.norpc -o main main.go
+# Copy artifacts to a clean image
+FROM public.ecr.aws/lambda/provided:al2023
+COPY --from=build /helloworld/main ./main
+ENTRYPOINT [ "./main" ]

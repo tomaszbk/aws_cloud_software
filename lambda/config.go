@@ -8,12 +8,14 @@ import (
 )
 
 type Config struct {
-	SENDER_MAIL string
-	PASSWORD    string
+	SenderEmail   string `env:"SENDER_EMAIL"`
+	EmailPassword string `env:"EMAIL_PASSWORD"`
 }
 
+var cfg *Config
+
 func loadEnv() {
-	cfg := &Config{}
+	cfg = &Config{}
 	opts := env.Options{UseFieldNameByDefault: true}
 
 	if err := env.ParseWithOptions(cfg, opts); err != nil {
