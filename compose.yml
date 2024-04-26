@@ -1,0 +1,20 @@
+services:
+
+  whatsapp:
+    image: whatsapp
+    build:
+      context: go-whatsapp/
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file: go-whatsapp/.env
+  
+  ngrok:
+    image: ngrok/ngrok:alpine
+    ports:
+      - "4040:4040"
+    command: 'http whatsapp:3000'
+    environment:
+      - NGROK_AUTHTOKEN=2fenVIf5gKAcehf504vrvDN2wQs_7oDZZHRFRGsdbMB3MtL5A
+    depends_on:
+      - whatsapp
