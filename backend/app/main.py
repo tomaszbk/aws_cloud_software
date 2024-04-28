@@ -2,7 +2,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette_admin.contrib.sqla import Admin, ModelView
 
-from app.models import Order, OrderDetail, Product, User, create_db_and_tables, engine
+from app.models import (
+    Order,
+    OrderDetail,
+    OrderView,
+    Product,
+    User,
+    create_db_and_tables,
+    engine,
+)
 
 app = FastAPI()
 
@@ -20,7 +28,7 @@ app.add_middleware(
 
 admin.add_view(ModelView(Product))
 admin.add_view(ModelView(User))
-admin.add_view(ModelView(Order))
 admin.add_view(ModelView(OrderDetail))
+admin.add_view(OrderView(Order))
 
 admin.mount_to(app)
