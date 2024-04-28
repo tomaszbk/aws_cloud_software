@@ -3,9 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette_admin.contrib.sqla import Admin, ModelView
 
 from app.models import (
-    Order,
-    OrderDetail,
-    OrderView,
     Product,
     User,
     create_db_and_tables,
@@ -26,9 +23,7 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-admin.add_view(ModelView(Product))
 admin.add_view(ModelView(User))
-admin.add_view(ModelView(OrderDetail))
-admin.add_view(OrderView(Order))
+admin.add_view(ModelView(Product))
 
 admin.mount_to(app)
