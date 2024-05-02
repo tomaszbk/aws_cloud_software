@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+{% block page_body %}
+    <div class="col-12">
+        <div class="card">
+
+            <div class="card-body border-bottom py-3 d-flex">
+
+                <div id="toolbar-actions" class="ms-auto btn-list">  
+                    <a class="btn"
+                        href="/admin/product/create">
+                        Create
+                    </a>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table card-table table-vcenter text-nowrap datatable">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Price</th>
+                        <th>Stock</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for product in products %}
+                        {% for product in products %}
+                            <tr>
+                                <td>{{ product.id }}</td>
+                                <td>{{ product.name }}</td>
+                                <td>{{ product.description }}</td>
+                                <td>{{ product.price }}</td>
+                                <td>{{ product.stock }}</td>
+                                <td>
+                                    <a href="/admin/product/update/{{ product.id }}" class="btn btn-info">Edit</a>
+                                    <form action="/admin/product/delete/{{ product.id }}" method="POST">
+                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -3,6 +3,8 @@ from datetime import date
 from pydantic import BaseModel
 from sqlmodel import Field, Relationship, Session, SQLModel, create_engine, select
 
+from app.pyd_form import as_form
+
 engine = create_engine("sqlite:///test.db", connect_args={"check_same_thread": False})
 
 
@@ -17,7 +19,7 @@ class Product(SQLModel, table=True):
     name: str
     description: str
     price: float
-    stock: bool
+    stock: int
 
 
 class User(SQLModel, table=True):
@@ -64,6 +66,19 @@ def add_user(
         return user
 
 
+UserForm: type[User] = as_form(User)
+
+
 def create_db_and_tables():
     SQLModel.metadata.drop_all(engine)
     SQLModel.metadata.create_all(engine)
+    product = Product(
+        name="Phone",
+        description="An awesome phone",
+        price=299.99,
+        stock=10,
+    )
+    with Session(engine) as session:
+        session.add(product)
+        session.commit()
+        session.refresh(product)
