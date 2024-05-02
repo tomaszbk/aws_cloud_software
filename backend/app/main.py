@@ -7,7 +7,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 
-from app.models import Product, User, UserForm, create_db_and_tables, engine
+from app.models import (
+    Product,
+    User,
+    create_db_and_tables,
+    engine,
+)
 
 app = FastAPI()
 
@@ -47,13 +52,15 @@ def product_create_view(request: Request):
 @app.post("/admin/product/create")
 def product_create(
     request: Request,
-    name: str = Form(...),
-    description: str = Form(...),
-    price: float = Form(...),
-    stock: int = Form(...),
+    product_data: Product = Depends(),
 ):
     with Session(engine) as session:
-        product = Product(name=name, description=description, price=price, stock=stock)
+        product = Product(
+            name=product_data.name,
+            description=product_data.description,
+            price=product_data.price,
+            stock=product_data.stock,
+        )
         session.add(product)
         session.commit()
     return RedirectResponse(
@@ -74,17 +81,14 @@ def product_update_view(request: Request, product_id: int):
 def product_update(
     request: Request,
     product_id: int,
-    name: str = Form(...),
-    description: str = Form(...),
-    price: float = Form(...),
-    stock: int = Form(...),
+    product_data: Product = Depends(),
 ):
     with Session(engine) as session:
         product = session.get(Product, product_id)
-        product.name = name
-        product.description = description
-        product.price = price
-        product.stock = stock
+        product.name = product_data.name
+        product.description = product_data.description
+        product.price = product_data.price
+        product.stock = product_data.stock
         session.add(product)
         session.commit()
     return RedirectResponse(
@@ -120,17 +124,17 @@ def user_create_view(request: Request):
 @app.post("/admin/user/create")
 def user_create(
     request: Request,
-    user: UserForm = Depends(),  # type: ignore
+    user_data: User = Depends(),
 ):
     with Session(engine) as session:
         user = User(
-            username=user.username,
-            email=user.email,
-            hashed_password=user.hashed_password,
-            is_admin=user.is_admin,
-            is_active=user.is_active,
-            phone=user.phone,
-            name=user.name,
+            username=user_data.username,
+            email=user_data.email,
+            hashed_password=user_data.hashed_password,
+            is_admin=user_data.is_admin,
+            is_active=user_data.is_active,
+            phone=user_data.phone,
+            name=user_data.name,
         )
         session.add(user)
         session.commit()
@@ -149,18 +153,12 @@ def user_update_view(request: Request, user_id: int):
 
 
 @app.post("/admin/user/update/{user_id}")
-def user_update(
-    request: Request,
-    user_id: int,
-    username: str = Form(...),
-    email: str = Form(...),
-    password: str = Form(...),
-):
+def user_update(request: Request, user_id: int, user_data: User = Depends()):
     with Session(engine) as session:
         user = session.get(User, user_id)
-        user.username = username
-        user.email = email
-        user.password = password
+        user.username = user_data.username
+        user.email = user_data.email
+        user.password = user_data.password
         session.add(user)
         session.commit()
     return RedirectResponse(

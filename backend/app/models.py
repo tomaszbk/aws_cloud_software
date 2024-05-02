@@ -13,6 +13,7 @@ class Prompt(BaseModel):
 
 
 # SQL MODEL
+@as_form
 class Product(SQLModel, table=True):
     __tablename__ = "products"
     id: int = Field(primary_key=True)
@@ -22,10 +23,11 @@ class Product(SQLModel, table=True):
     stock: int
 
 
+@as_form
 class User(SQLModel, table=True):
     __tablename__ = "users"
 
-    id: int = Field(primary_key=True)
+    id: int = Field(primary_key=True, default=None)
     username: str
     phone: str
     name: str
@@ -64,9 +66,6 @@ def add_user(
         session.commit()
         session.refresh(user)
         return user
-
-
-UserForm: type[User] = as_form(User)
 
 
 def create_db_and_tables():

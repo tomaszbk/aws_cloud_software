@@ -36,8 +36,8 @@
                         <td>{{ "Yes" if user.is_admin else "No" }}</td>
                         <td>{{ "Yes" if user.is_active else "No" }}</td>
                         <td>
-                            <a href="/admin/users/edit/{{ user.id }}" class="btn btn-info">Edit</a>
-                            <a href="/admin/users/delete/{{ user.id }}" class="btn btn-danger">Delete</a>
+                            <a href="/admin/user/update/{{ user.id }}" class="btn btn-info">Edit</a>
+                            <a href="/admin/user/delete/{{ user.id }}" class="btn btn-danger">Delete</a>
                         </td>
                     </tr>
                     {% endfor %}
