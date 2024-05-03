@@ -8,11 +8,10 @@ COPY go.mod go.sum ./
 # Download and install the Go dependencies
 RUN go mod download
 
-# Copy the rest of the application source code
 COPY . .
 
 # Build the Go application
-RUN go build -o app
+RUN go build -o go_whatsapp
 
 # Use a smaller base image for the final stage
 FROM alpine:3.19
@@ -21,7 +20,7 @@ FROM alpine:3.19
 WORKDIR /app
 
 # Copy the built application from the builder stage
-COPY --from=builder /app/app .
+COPY --from=builder /app/go_whatsapp .
 
 # Set the entry point for the container
 CMD ["./app"]
