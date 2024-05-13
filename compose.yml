@@ -18,3 +18,16 @@ services:
       - NGROK_AUTHTOKEN=2fenVIf5gKAcehf504vrvDN2wQs_7oDZZHRFRGsdbMB3MtL5A
     depends_on:
       - whatsapp
+
+  email-lambda:
+    image: email-lambda
+    build:
+      context: email_lambda/
+      dockerfile: Dockerfile
+    ports:
+      - "9000:8080"
+    environment:
+      - SENDER_EMAIL=${SENDER_EMAIL}
+      - SENDER_PASSWORD=${SENDER_PASSWORD}
+    entrypoint: ["/usr/local/bin/aws-lambda-rie"]
+    command: ["./main"]

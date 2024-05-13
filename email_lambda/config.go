@@ -8,8 +8,8 @@ import (
 )
 
 type Config struct {
-	SenderEmail   string `env:"SENDER_EMAIL"`
-	EmailPassword string `env:"EMAIL_PASSWORD"`
+	SenderEmail    string `env:"SENDER_EMAIL"`
+	SenderPassword string `env:"SENDER_PASSWORD"`
 }
 
 var cfg *Config
