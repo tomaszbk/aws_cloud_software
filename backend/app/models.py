@@ -1,9 +1,8 @@
 from datetime import date
 
+from app.pyd_form import as_form
 from pydantic import BaseModel
 from sqlmodel import Field, Relationship, Session, SQLModel, create_engine, select
-
-from app.pyd_form import as_form
 
 engine = create_engine("sqlite:///test.db", connect_args={"check_same_thread": False})
 
@@ -31,40 +30,31 @@ class User(SQLModel, table=True):
     username: str
     phone: str
     name: str
+    last_name: str
     email: str
     hashed_password: str
     is_admin: bool
     is_active: bool
 
 
+@as_form
+class UserCreate(SQLModel, table=False):
+    username: str
+    phone: str
+    name: str
+    email: str
+    hashed_password: str
+
+
+@as_form
+class UserLogin(SQLModel, table=False):
+    username: str
+    password: str
+
+
 def get_user_by_username(username: str):
     with Session(engine) as session:
         user = session.exec(select(User).where(User.username == username)).first()
-        return user
-
-
-def add_user(
-    username: str,
-    phone: str,
-    name: str,
-    email: str,
-    hashed_password: str,
-    is_admin: bool,
-    is_active: bool,
-):
-    with Session(engine) as session:
-        user = User(
-            username=username,
-            phone=phone,
-            name=name,
-            email=email,
-            hashed_password=hashed_password,
-            is_admin=is_admin,
-            is_active=is_active,
-        )
-        session.add(user)
-        session.commit()
-        session.refresh(user)
         return user
 
 

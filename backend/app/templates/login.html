@@ -1,0 +1,45 @@
+{% extends "base.html" %} 
+{% block body %}
+<style>
+    .centered-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+    .card {
+        max-width: 400px;
+        width: 100%;
+    }
+</style>
+<div class="col-12 centered-container">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Log in</h3>
+        </div>
+        <style>
+            .dark-border{
+                border-color: #000000
+            }
+        </style>
+        <div class="card-body border-bottom py-3">
+            <form method="post">
+
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control dark-border" id="username" name="username" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" class="form-control dark-border" id="password" name="password" rows="3" required></input>
+                </div>
+
+                <div class="form-footer">
+                    <button type="submit" name="save" class="btn btn-primary">Log in</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

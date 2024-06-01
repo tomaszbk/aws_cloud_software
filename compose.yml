@@ -19,6 +19,29 @@ services:
     depends_on:
       - whatsapp
 
+  model-llama:
+    image: llama3
+    build:
+      context: llm_models/llama3
+      dockerfile: Dockerfile
+    ports:
+      - 8007:8007
+    networks:
+      - lines-network
+    volumes:
+      - llm-models:/root/.cache/huggingface/hub/
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  volumes:
+    llm-models:
+    driver: local
+
   email-lambda:
     image: email-lambda
     build:
