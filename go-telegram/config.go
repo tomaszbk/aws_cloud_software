@@ -5,8 +5,7 @@ import (
 )
 
 type Config struct {
-	TwillioAccountSID string `env:"TWILIO_ACCOUNT_SID"`
-	TwilioAuthToken   string `env:"TWILIO_AUTH_TOKEN"`
+	TelegramBotToken string `env:"TELEGRAM_BOT_TOKEN"`
 }
 
 var cfg *Config
