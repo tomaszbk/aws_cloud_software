@@ -1,0 +1,31 @@
+services:
+  localai-api:
+    # See https://localai.io/basics/getting_started/#container-images for
+    # a list of available container images (or build your own with the provided Dockerfile)
+    # Available images with CUDA, ROCm, SYCL
+    # Image list (quay.io): https://quay.io/repository/go-skynet/local-ai?tab=tags
+    # Image list (dockerhub): https://hub.docker.com/r/localai/localai
+    image: localai/localai:v2.17.1-cublas-cuda12-core
+    ports:
+      - 8080:8080
+    environment:
+      - MODELS_PATH=/models
+    #  - DEBUG=true
+    volumes:
+      - llm-models:/models:cached
+    command:
+    # Here we can specify a list of models to run (see quickstart https://localai.io/basics/getting_started/#running-models )
+    # or an URL pointing to a YAML configuration file, for example:
+    # - https://gist.githubusercontent.com/mudler/ad601a0488b497b69ec549150d9edd18/raw/a8a8869ef1bb7e3830bf5c0bae29a0cce991ff8d/phi-2.yaml
+    - https://gist.githubusercontent.com/tomaszbk/1e8d3a705da75e21b0814f513a5925f3/raw/9ef3d951eb53b5c99f903150a9407e0c661a9f61/llama3.yaml
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  llm-models:
+    driver: local
