@@ -1,11 +1,13 @@
-from sqlmodel import Session, create_engine
+import boto3
+import os
 
-engine = create_engine("sqlite:///test.db", connect_args={"check_same_thread": False})
+ENV = os.getenv("ENV")
 
-
-def get_session():
-    session = Session(engine)
-    try:
-        yield session
-    finally:
-        session.close()
+match ENV:
+    case "dev":
+        
+    case "prod":
+        region = os.getenv("REGION", "us-east-1")
+        dynamodb = boto3.resource("dynamodb", region_name="us-west-2")
+        users_table = dynamodb.Table("users")
+        products_table = dynamodb.Table("products")
