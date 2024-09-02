@@ -9,22 +9,20 @@ services:
       - 3000:3000
     env_file: go-telegram/.env
 
-  model-llama:
-    image: llama3
-    build:
-      context: llama3
-      dockerfile: Dockerfile
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
     ports:
-      - 8007:8007
+      - "11434:11434"
     volumes:
-      - llm-models:/root/.cache/huggingface/hub/
+      - ollama:/root/.ollama
+    environment:
+      - OLLAMA_DEBUG=true
     deploy:
       resources:
         reservations:
-          devices: 
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+          devices:
+            - capabilities: [gpu]
 
   email-lambda:
     image: email-lambda
@@ -41,5 +39,5 @@ services:
 
 
 volumes:
-  llm-models:
-    driver: local
+  ollama:
+    name: ollama
