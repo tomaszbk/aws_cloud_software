@@ -37,6 +37,22 @@ services:
     entrypoint: ["/usr/local/bin/aws-lambda-rie"]
     command: ["./main"]
 
+  nodejs-cdk:
+    # used for local development
+    image: 'local-aws-cdk'
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: '/home/cdk'
+    env_file:
+      - .env
+    volumes:
+      - './:/home/cdk'
+      - '${HOME}/.aws/:/root/.aws/'
+      - '/var/run/docker.sock:/var/run/docker.sock' # for docker-in-docker
+    command: ["bash", "-c", "while true; do sleep 30; done"]
+    network_mode: "host"
+
 
 volumes:
   ollama:
