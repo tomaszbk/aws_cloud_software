@@ -57,13 +57,13 @@ services:
     image: backend
     build:
       context: backend/
-      dockerfile: Dockerfile.debug
-    tty: true  
+      dockerfile: dev.Dockerfile
+    command: tail -f /dev/null
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/code
-      - /code/.venv
+      - .:/code
+      # - /code/backend/.venv
 
 
 volumes:
