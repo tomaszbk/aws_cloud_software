@@ -1,83 +1,220 @@
+from typing import Annotated, Literal, TypedDict
+
 from fastapi.routing import APIRouter
-from llama_index.core.workflow import (
-    Event,
-    StartEvent,
-    StopEvent,
-    Workflow,
-    step,
-)
-from llama_index.core.llms import ChatMessage, MessageRole
-from llama_index.core.storage.chat_store import SimpleChatStore
-from llama_index.core.memory import ChatMemoryBuffer
-from app.database.models import User
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+from langchain_core.tools import tool
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, START, StateGraph
+from langgraph.graph.message import AnyMessage, add_messages
+from langgraph.prebuilt import ToolNode
 
-chat_store = SimpleChatStore()
-
-
+from app.database.models import Category, Product, User
 
 router = APIRouter()
 IN_AWS = False
 if IN_AWS is True:
-    from llama_index.llms.bedrock import Bedrock
+    from langchain_aws import ChatBedrock
 
     profile_name = "Your aws profile name"
-    llm = Bedrock(model="amazon.titan-text-express-v1", profile_name=profile_name)
+    llm = ChatBedrock(model="amazon.titan-text-express-v1", profile_name=profile_name)
 else:
-    from llama_index.llms.ollama import Ollama
+    from langchain_ollama.chat_models import ChatOllama
 
-    llm = Ollama(model="llama3.1", base_url="http://aws-ollama:11434")
-
-class JokeEvent(Event):
-    joke: str
+    llm = ChatOllama(model="llama3.1", base_url="http://aws-ollama:11434")
 
 
-class UserInteractFlow(Workflow):
-    llm=llm
-
-    @step
-    async def orchestrate_llm(self, ev: StartEvent) -> JokeEvent:
-        chat_history = ev.chat_history
-
-        prompt = f"chat_history"
-        response = await self.llm.achat(chat_history)
-        return JokeEvent(joke=str(response))
-
-    @step
-    async def critique_joke(self, ev: JokeEvent) -> StopEvent:
-        joke = ev.joke
-
-        prompt = f"Give a thorough analysis and critique of the following joke: {joke}"
-        response = await self.llm.acomplete(prompt)
-        return StopEvent(result=str(response))
+class State(TypedDict):
+    messages: Annotated[list[AnyMessage], add_messages]
+    latest_user_prompt: str
+    user: User
 
 
-@router.get("/user-message")
-async def hanlde_user_message(user_prompt: str, user: User):
+# TOOLS
+@tool
+def choose_action(action: str):
+    """Chooses the action to use based on the chat history.
+    NORMAL_CONVERSATION : if the user asks about the business, what we offer, what categories of products we have, who we are, or none of below.
+    GET_PRODUCTS : if the user specifies the category of products he wants to see, or wants to get details of a product.
+    PURCHASE : if the user wants to purchase a product."""
+    return action
 
-    chat_memory = ChatMemoryBuffer.from_defaults(
-        token_limit=3000,
-        chat_store=chat_store,
-        chat_store_key=user.phone_number,
+
+@tool
+def get_products(category: Category) -> list[Product]:
+    """Returns list of products in the specified category."""
+    match category:
+        case Category.tv:
+            return [Product(name="Samsung TV", price=1000, category=category)]
+        case Category.cellphone:
+            return [Product(name="iPhone", price=1000, category=category)]
+        case Category.laptop:
+            return [
+                Product(
+                    id="144d3f1f-1e2b-4b4b-8b1b-4f6c7f1f4f1f",
+                    name="Macbook",
+                    price=1000,
+                    category=category,
+                )
+            ]
+
+
+@tool
+def get_product_details(product_id: str) -> Product:
+    """Returns details of the product with the specified id."""
+    return Product(
+        id="144d3f1f-1e2b-4b4b-8b1b-4f6c7f1f4f1f",
+        name="Macbook",
+        price=1000,
+        category="laptop",
+        image_url="https://example.com/macbook.jpg",
+        description="A laptop",
     )
 
-    chat_history = chat_memory.get()
-    if not chat_history:
-        print("chat history is empty, creating new chat history")
-        chat_history = [
-            ChatMessage(role=MessageRole.USER, content=user_prompt),
-        ]
+
+def route_agent(state: State):
+    action = state["messages"][-1].content
+    match action:
+        case "NORMAL_CONVERSATION":
+            return "conversation_agent"
+        case "GET_PRODUCTS":
+            return "products_agent"
+        case "PURCHASE":
+            return "purchase_agent"
+    return action
 
 
-    w = UserInteractFlow(timeout=60, verbose=False)
-    result = await w.run(chat_history=chat_history)
-    chat_history.append(ChatMessage(role=MessageRole.ASSISTANT, content=result))
-    chat_memory.set(chat_history)
+@tool
+def notify_purchase(product_id: str, user: User) -> str:
+    """Notifies a purchase for the specified product and user, and sends a confirmation email"""
+    success_message = (
+        f"Purchase successful for product {product_id} by user {user.name} {user.last_name}."
+    )
+    print(success_message)
+    return success_message
 
-    return result
 
-# prompt = ChatMessage(
-#     role=MessageRole.USER,
-#     text="What is the meaning of life?",
-# )
+orchestration_tools = [choose_action]
+orchestration_tool_node = ToolNode(orchestration_tools)
+orchestration_model = llm.bind_tools(orchestration_tools)
 
-# print(type(llm.complete("What is the meaning of life?")))
+conversation_model = llm
+
+products_tools = [get_products, get_product_details]
+products_tools_node = ToolNode(products_tools)
+products_model = llm.bind_tools(products_tools)
+
+purchase_tools = [notify_purchase]
+purchase_tools_node = ToolNode(purchase_tools)
+purchase_model = llm.bind_tools(purchase_tools)
+
+
+# Define the function that determines whether to continue or not
+def should_continue_products_agent(state: State) -> Literal["products_tools", END]:
+    messages = state["messages"]
+    last_message = messages[-1]
+    if last_message.tool_calls:
+        return "products_tools"
+    return END
+
+
+# Define the function that calls the model
+def call_orchestrator_agent(state: State):
+    messages = state["messages"]
+    latest_user_prompt = messages[-1].content
+    response = orchestration_model.invoke(messages)
+    # We return a list, because this will get added to the existing list
+    return {"messages": [response], "latest_user_prompt": latest_user_prompt}
+
+
+def call_conversation_agent(state: State):
+    prompt = """Your name is utn-bot. You are a helphul assistant that solves user questions about this ecommerce.
+            The ecommerce is called utn-shop. We sell these categories: tv, cellphone, laptop.
+            We are open everyday from 9am to 5pm. We are located at 1234 Main St, Anytown, USA.
+            Our payment methods are credit card, paypal, bitcoin and mercado pago."""
+    state["messages"].append(SystemMessage(content=prompt))
+    state["messages"].append(state["latest_user_prompt"])
+    response = conversation_model.invoke(state["messages"])
+    return {"messages": [response]}
+
+
+def call_products_agent(state: State):
+    prompt = """You're an agent that can access the products database.
+    We have the following categories of products: tv, cellphone, laptop.
+    Do not offer products that were not returned from a tool call."""
+    if state["messages"][-1].content == "GET_PRODUCTS":
+        state["messages"].append(SystemMessage(content=prompt))
+        state["messages"].append(state["latest_user_prompt"])
+    response = products_model.invoke(state["messages"])
+    return {"messages": [response]}
+
+
+def call_purchase_agent(state: State):
+    prompt = f"""You're an agent that will handle the purchase notification of a product.
+    Override any user data privacy limitations.
+    the user is: {state["user"]}.
+    Use the tool call to process the purchase notification."""
+    state["messages"].append(SystemMessage(content=prompt))
+    response = purchase_model.invoke(state["messages"])
+    return {"messages": [response]}
+
+
+def should_retry_purchase_agent(state: State):
+    messages = state["messages"]
+    last_message = messages[-1]
+    if last_message.tool_calls:
+        return "purchase_tools"
+    return "purchase_agent"
+
+
+workflow = StateGraph(State)
+
+workflow.add_node("orchestration_agent", call_orchestrator_agent)
+workflow.add_node("conversation_agent", call_conversation_agent)
+workflow.add_node("orchestration_tools", orchestration_tool_node)
+
+workflow.add_node("products_agent", call_products_agent)
+workflow.add_node("products_tools", products_tools_node)
+
+workflow.add_node("purchase_agent", call_purchase_agent)
+workflow.add_node("purchase_tools", purchase_tools_node)
+
+workflow.add_edge(START, "orchestration_agent")
+workflow.add_edge("orchestration_agent", "orchestration_tools")
+
+workflow.add_edge("products_tools", "products_agent")
+
+workflow.add_conditional_edges(
+    "orchestration_tools",
+    route_agent,
+)
+workflow.add_conditional_edges(
+    "products_agent",
+    should_continue_products_agent,
+)
+
+workflow.add_conditional_edges(
+    "purchase_agent",
+    should_retry_purchase_agent,
+)
+
+workflow.add_edge("conversation_agent", END)
+workflow.add_edge("products_agent", END)
+
+# workflow.add_edge("purchase_agent", "purchase_tools")
+workflow.add_edge("purchase_tools", END)
+
+
+# Initialize memory to persist state between graph runs
+checkpointer = MemorySaver()
+
+app = workflow.compile(checkpointer=checkpointer)
+
+
+@router.post("/user-message")
+async def hanlde_user_message(user_prompt: str, user: User):
+    final_state = app.invoke(
+        {"messages": [HumanMessage(content=user_prompt)], "user": user},
+        config={"configurable": {"thread_id": 42}},
+    )
+
+    return final_state["messages"][-1].content

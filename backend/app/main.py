@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.database.models import Product
+from app.workflow import router as workflow_router
 from fastapi import File, UploadFile
 import boto3
 
@@ -17,6 +18,7 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+app.include_router(workflow_router)
 
 @app.get("/")
 async def root():

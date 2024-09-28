@@ -1,4 +1,5 @@
 import uuid
+from enum import Enum
 
 from pydantic import UUID4, BaseModel
 
@@ -10,10 +11,16 @@ class User(BaseModel):
     email: str
 
 
+class Category(str, Enum):
+    tv = "tv"
+    cellphone = "cellphone"
+    laptop = "laptop"
+
+
 class Product(BaseModel):
     id: UUID4 = uuid.uuid4()
     name: str
     price: float
-    description: str
-    category: str
-    image_url: str
+    description: str = None
+    category: Category
+    image_url: str = None
