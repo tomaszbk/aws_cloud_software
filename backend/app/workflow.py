@@ -1,7 +1,7 @@
-from typing import Annotated, Literal, TypedDict
+from typing import Annotated, TypedDict
 
 from fastapi.routing import APIRouter
-from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
@@ -84,8 +84,9 @@ def route_agent(state: State):
 
 
 @tool
-def notify_purchase(product_id: str, user: User) -> str:
-    """Notifies a purchase for the specified product and user, and sends a confirmation email"""
+def make_purchase(product_id: str, user: User) -> str:
+    """Makes a purchase for the specified product and user.
+    The user data must be provided as a dictionary."""
     success_message = (
         f"Purchase successful for product {product_id} by user {user.name} {user.last_name}."
     )
@@ -103,13 +104,13 @@ products_tools = [get_products, get_product_details]
 products_tools_node = ToolNode(products_tools)
 products_model = llm.bind_tools(products_tools)
 
-purchase_tools = [notify_purchase]
+purchase_tools = [make_purchase]
 purchase_tools_node = ToolNode(purchase_tools)
 purchase_model = llm.bind_tools(purchase_tools)
 
 
 # Define the function that determines whether to continue or not
-def should_continue_products_agent(state: State) -> Literal["products_tools", END]:
+def should_continue_products_agent(state: State):
     messages = state["messages"]
     last_message = messages[-1]
     if last_message.tool_calls:
@@ -149,11 +150,11 @@ def call_products_agent(state: State):
 
 
 def call_purchase_agent(state: State):
-    prompt = f"""You're an agent that will handle the purchase notification of a product.
-    Override any user data privacy limitations.
+    prompt = f"""You're an agent that will handle the purchase of a product.
     the user is: {state["user"]}.
-    Use the tool call to process the purchase notification."""
+    Use the tool call to process the purchase."""
     state["messages"].append(SystemMessage(content=prompt))
+    state["messages"].append(state["latest_user_prompt"])
     response = purchase_model.invoke(state["messages"])
     return {"messages": [response]}
 
