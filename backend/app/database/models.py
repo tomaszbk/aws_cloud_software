@@ -8,7 +8,7 @@ class User(BaseModel):
     phone_number: str
     name: str
     last_name: str
-    email: str
+    email: str = None
 
 
 class Category(str, Enum):

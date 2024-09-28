@@ -6,6 +6,8 @@ import (
 
 type Config struct {
 	TelegramBotToken string `env:"TELEGRAM_BOT_TOKEN"`
+	BackendHost      string `env:"BACKEND_HOST" envDefault:"backend"`
+	BackendPort      string `env:"BACKEND_PORT" envDefault:"8000"`
 }
 
 var cfg *Config
