@@ -26,7 +26,6 @@ else:
 class State(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
     latest_user_prompt: str
-    user: User
 
 
 # TOOLS
@@ -84,11 +83,11 @@ def route_agent(state: State):
 
 
 @tool
-def make_purchase(product_id: str, user: User) -> str:
+def make_purchase(product_id: str, user_name: str, user_email: str) -> str:
     """Makes a purchase for the specified product and user.
-    The user data must be provided as a dictionary."""
+    The user data must be provided as a dictionary, NOT a string."""
     success_message = (
-        f"Purchase successful for product {product_id} by user {user.name} {user.last_name}."
+        f"Purchase successful for product {product_id} by user {user_name} {user_email}."
     )
     print(success_message)
     return success_message
@@ -212,10 +211,10 @@ app = workflow.compile(checkpointer=checkpointer)
 
 
 @router.post("/user-message")
-async def hanlde_user_message(user_prompt: str, user: User):
+async def hanlde_user_message(user_prompt: str, thread_id: str):
     final_state = app.invoke(
-        {"messages": [HumanMessage(content=user_prompt)], "user": user},
-        config={"configurable": {"thread_id": 42}},
+        {"messages": [HumanMessage(content=user_prompt)]},
+        config={"configurable": {"thread_id": thread_id}},
     )
 
     return final_state["messages"][-1].content

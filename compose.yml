@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - 3000:3000
-    env_file: go-telegram/.env
+    env_file: .env
 
   ollama:
     image: ollama/ollama
@@ -55,15 +55,13 @@ services:
 
   backend:
     image: backend
+    container_name: backend
     build:
       context: backend/
-      dockerfile: dev.Dockerfile
-    command: tail -f /dev/null
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    volumes:
-      - .:/code
-      # - /code/backend/.venv
+
 
 
 volumes:

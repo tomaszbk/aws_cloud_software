@@ -1,0 +1,29 @@
+services:
+
+
+  backend:
+    image: backend
+    build:
+      context: backend/
+      dockerfile: dev.Dockerfile
+    command: tail -f /dev/null
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/code
+      # - /code/backend/.venv
+
+  ollama:
+    image: ollama/ollama
+    container_name: aws-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    environment:
+      - OLLAMA_DEBUG=true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
