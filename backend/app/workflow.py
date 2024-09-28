@@ -86,7 +86,7 @@ def route_agent(state: State):
 @tool
 def make_purchase(product_id: str, user: User) -> str:
     """Makes a purchase for the specified product and user.
-    The user data must be provided as a dictionary."""
+    The user data must be provided as a dictionary, NOT a string."""
     success_message = (
         f"Purchase successful for product {product_id} by user {user.name} {user.last_name}."
     )
@@ -163,6 +163,12 @@ def should_retry_purchase_agent(state: State):
     messages = state["messages"]
     last_message = messages[-1]
     if last_message.tool_calls:
+        if type(last_message.tool_calls[0]["args"]["user"]) == str:
+            import ast
+
+            last_message.tool_calls[0]["args"]["user"] = ast.literal_eval(
+                last_message.tool_calls[0]["args"]["user"]
+            )
         return "purchase_tools"
     return "purchase_agent"
 
@@ -215,7 +221,7 @@ app = workflow.compile(checkpointer=checkpointer)
 async def hanlde_user_message(user_prompt: str, user: User):
     final_state = app.invoke(
         {"messages": [HumanMessage(content=user_prompt)], "user": user},
-        config={"configurable": {"thread_id": 42}},
+        config={"configurable": {"thread_id": user.phone_number}},
     )
 
     return final_state["messages"][-1].content
