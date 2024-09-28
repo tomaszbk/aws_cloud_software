@@ -11,7 +11,7 @@ services:
 
   ollama:
     image: ollama/ollama
-    container_name: ollama
+    container_name: aws-ollama
     ports:
       - "11434:11434"
     volumes:
@@ -52,6 +52,18 @@ services:
       - '/var/run/docker.sock:/var/run/docker.sock' # for docker-in-docker
     command: ["bash", "-c", "while true; do sleep 30; done"]
     network_mode: "host"
+
+  backend:
+    image: backend
+    build:
+      context: backend/
+      dockerfile: Dockerfile.debug
+    tty: true  
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/code
+      - /code/.venv
 
 
 volumes:

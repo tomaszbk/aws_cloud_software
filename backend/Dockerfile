@@ -1,11 +1,23 @@
 FROM public.ecr.aws/docker/library/python:3.11.9-slim
 
-WORKDIR /app
+ENV UV_SYSTEM_PYTHON=1
 
-COPY requirements.txt .
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
-RUN pip install -r requirements.txt --no-cache-dir
+# Change the working directory to the `code` directory
+WORKDIR /code
 
-COPY app app/
+# Install dependencies
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-install-project
+
+# Copy the project into the image
+ADD . /code
+
+# Sync the project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

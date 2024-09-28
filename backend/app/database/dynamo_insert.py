@@ -1,4 +1,4 @@
-from app.config import products_table, users_table
+from app.database.dynamo_config import products_table, users_table
 
 from database.models import Product, User
 

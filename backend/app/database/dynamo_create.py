@@ -1,7 +1,4 @@
-import boto3
-
-# Initialize a session using Amazon DynamoDB
-dynamodb = boto3.resource("dynamodb", region_name="us-west-2")
+from app.database.dynamo_config import dynamodb
 
 # Create a new table
 table = dynamodb.create_table(
