@@ -1,9 +1,13 @@
 from aws_cdk import (
     App,
     Stack,
+    RemovalPolicy,
     aws_lambda as _lambda,
     aws_ec2 as ec2,
     aws_ecs as ecs,
+    aws_s3 as s3,
+    aws_dynamodb as ddb,
+    aws_iam as iam
 )
 
 from constructs import Construct
@@ -18,13 +22,41 @@ class AppStack(Stack):
     def __init__(self, scope: Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
-        #email_lambda = _lambda.DockerImageFunction(
-        #    self,
-        #    "EmailLambda",
-        #    code=_lambda.DockerImageCode.from_image_asset(directory="./email_lambda", asset_name="EmailLambdaImage"),
-        #    environment={"SENDER_EMAIL": SENDER_EMAIL, "SENDER_PASSWORD": SENDER_PASSWORD},
-        #)
+        
+        email_lambda = _lambda.DockerImageFunction(
+            self,
+            "EmailLambda",
+            code=_lambda.DockerImageCode.from_image_asset(directory="./email_lambda"),
+            environment={"SENDER_EMAIL": SENDER_EMAIL, "SENDER_PASSWORD": SENDER_PASSWORD},
+        )
 
+        image_bucket = s3.Bucket(self, "product-images", 
+            bucket_name="product-images", 
+            removal_policy=RemovalPolicy.DESTROY)
+
+        products_table = ddb.Table(
+            self, 'ProductsTable',
+            table_name='products',
+            partition_key={'name': 'category', 'type': ddb.AttributeType.STRING},
+            sort_key={'name': 'product_id', 'type': ddb.AttributeType.NUMBER},
+            removal_policy=RemovalPolicy.DESTROY
+        )
+        
+        users_table = ddb.Table(
+            self, 'UsersTable',
+            table_name='products',
+            partition_key={'name': 'phone_number', 'type': ddb.AttributeType.STRING},
+            removal_policy=RemovalPolicy.DESTROY
+        )
+
+        # Create an IAM Role for ECS Task Definition
+        ecs_task_role = iam.Role(self, "ECSTaskRole",
+            assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com")
+        )
+
+        image_bucket.grant_read_write(ecs_task_role)
+        users_table.grant_read_write_data(ecs_task_role)
+        products_table.grant_read_write_data(ecs_task_role)
         
           # Crear una VPC
         vpc = ec2.Vpc(self, "UTNCloudVPC",
@@ -44,11 +76,13 @@ class AppStack(Stack):
       
 
         # Definir una imagen de Docker que será usada por la tarea ECS
-        fastapi_task_definition = ecs.Ec2TaskDefinition(self, "FastApiTaskDef")
+        fastapi_task_definition = ecs.Ec2TaskDefinition(self, "FastApiTaskDef",
+            task_role=ecs_task_role
+        )
 
         # Usar una imagen 
         fastapi_container = fastapi_task_definition.add_container("FastApiContainer",
-            image=ecs.ContainerImage.from_asset(directory="./backend", asset_name="FastApiImage"),
+            image=ecs.ContainerImage.from_asset(directory="./backend"),
             memory_limit_mib=256,                          
         )
 
@@ -64,6 +98,8 @@ class AppStack(Stack):
            
         )
 
+     
+
         ##Crear un Security Group que permita la comunicación entre los servicios
         #sg = ec2.SecurityGroup(self, "AppSG", vpc=vpc,
         #    allow_all_outbound=True
@@ -77,7 +113,7 @@ class AppStack(Stack):
 
         # Usar una imagen 
         telegram_container = telegram_task_definition.add_container("TelegramContainer",
-            image=ecs.ContainerImage.from_asset(directory= "./go-telegram", asset_name="TelegramImage"),
+            image=ecs.ContainerImage.from_asset(directory= "./go-telegram"),
             memory_limit_mib=256,
             environment={"TELEGRAM_BOT_TOKEN": TELEGRAM_BOT_TOKEN, "BACKEND_URL": "http://FastApiService.AppCluster.us-west-2.ecs.internal:8000"},                           
         )
