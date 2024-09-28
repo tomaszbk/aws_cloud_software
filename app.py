@@ -21,18 +21,18 @@ class AppStack(Stack):
         #email_lambda = _lambda.DockerImageFunction(
         #    self,
         #    "EmailLambda",
-        #    code=_lambda.DockerImageCode.from_image_asset("./email_lambda"),
+        #    code=_lambda.DockerImageCode.from_image_asset(directory="./email_lambda", asset_name="EmailLambdaImage"),
         #    environment={"SENDER_EMAIL": SENDER_EMAIL, "SENDER_PASSWORD": SENDER_PASSWORD},
         #)
 
         
           # Crear una VPC
-        vpc = ec2.Vpc(self, "MyVpc",
+        vpc = ec2.Vpc(self, "UTNCloudVPC",
             max_azs=2  # Se distribuye en dos zonas de disponibilidad
         )
 
         # Crear un ECS Cluster
-        cluster = ecs.Cluster(self, "MyEcsCluster",
+        cluster = ecs.Cluster(self, "AppCluster",
             vpc=vpc
         )
 
@@ -41,25 +41,56 @@ class AppStack(Stack):
             instance_type=ec2.InstanceType("t2.micro"),
         )
 
+      
+
         # Definir una imagen de Docker que será usada por la tarea ECS
-        task_definition_telegram = ecs.Ec2TaskDefinition(self, "TaskDef")
+        fastapi_task_definition = ecs.Ec2TaskDefinition(self, "FastApiTaskDef")
 
         # Usar una imagen 
-        container_telegram = task_definition_telegram.add_container("WebContainer",
-            image=ecs.ContainerImage.from_asset("./go-telegram"),
-            memory_limit_mib=256,
-            environment={"TELEGRAM_BOT_TOKEN": TELEGRAM_BOT_TOKEN}                           
+        fastapi_container = fastapi_task_definition.add_container("FastApiContainer",
+            image=ecs.ContainerImage.from_asset(directory="./backend", asset_name="FastApiImage"),
+            memory_limit_mib=256,                          
         )
 
-        # Abrir el puerto 80 para permitir tráfico web
-        container_telegram.add_port_mappings(
+        # Abrir el puerto
+        fastapi_container.add_port_mappings(
+            ecs.PortMapping(container_port=8000)
+        )
+
+        # Crear un servicio ECS para ejecutar la tarea en EC2
+        fastapi_ecs_service = ecs.Ec2Service(self, "FastApiService",
+            cluster=cluster,
+            task_definition=fastapi_task_definition,
+           
+        )
+
+        ##Crear un Security Group que permita la comunicación entre los servicios
+        #sg = ec2.SecurityGroup(self, "AppSG", vpc=vpc,
+        #    allow_all_outbound=True
+        #)
+
+        ## Permitir tráfico entre los servicios dentro de la misma VPC (por ejemplo en puertos 80 y 8000)
+        #sg.add_ingress_rule(sg, ec2.Port.tcp(8000), "Allow internal traffic on port 8000")
+
+        # Definir una imagen de Docker que será usada por la tarea ECS
+        telegram_task_definition = ecs.Ec2TaskDefinition(self, "TelegramTaskDef")
+
+        # Usar una imagen 
+        telegram_container = telegram_task_definition.add_container("TelegramContainer",
+            image=ecs.ContainerImage.from_asset(directory= "./go-telegram", asset_name="TelegramImage"),
+            memory_limit_mib=256,
+            environment={"TELEGRAM_BOT_TOKEN": TELEGRAM_BOT_TOKEN, "BACKEND_URL": "http://FastApiService.AppCluster.us-west-2.ecs.internal:8000"},                           
+        )
+
+        # Abrir el puerto
+        telegram_container.add_port_mappings(
             ecs.PortMapping(container_port=80)
         )
 
         # Crear un servicio ECS para ejecutar la tarea en EC2
-        ecs_service = ecs.Ec2Service(self, "MyEc2Service",
+        telegram_ecs_service = ecs.Ec2Service(self, "TelegramService",
             cluster=cluster,
-            task_definition=task_definition_telegram
+            task_definition=telegram_task_definition,
         )
 
 
