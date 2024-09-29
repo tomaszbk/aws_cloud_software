@@ -13,6 +13,7 @@ from aws_cdk import (
     aws_events_targets as events_targets,
 )
 
+
 from constructs import Construct
 import os
 from dotenv import load_dotenv
@@ -37,35 +38,34 @@ class AppStack(Stack):
            code=_lambda.DockerImageCode.from_image_asset(directory="./email_lambda"),
            environment={"SENDER_EMAIL": SENDER_EMAIL, "SENDER_PASSWORD": SENDER_PASSWORD},
         )
+        image_bucket = s3.Bucket(self, "ProductImages", 
+            bucket_name="product-images-utn-frlp", 
+            removal_policy=RemovalPolicy.DESTROY)
 
-        #image_bucket = s3.Bucket(self, "ProductImages", 
-        #    bucket_name="product-images-utn-frlp", 
-        #    removal_policy=RemovalPolicy.DESTROY)
-
-        #products_table = ddb.Table(
-        #    self, 'ProductsTable',
-        #    table_name='products',
-        #    partition_key={'name': 'category', 'type': ddb.AttributeType.STRING},
-        #    sort_key={'name': 'product_id', 'type': ddb.AttributeType.NUMBER},
-        #    removal_policy=RemovalPolicy.DESTROY
-        #)
-        #
-        #users_table = ddb.Table(
-        #    self, 'UsersTable',
-        #    table_name='users',
-        #    partition_key={'name': 'phone_number', 'type': ddb.AttributeType.STRING},
-        #    removal_policy=RemovalPolicy.DESTROY
-        #)
+        products_table = ddb.Table(
+            self, 'ProductsTable',
+            table_name='products',
+            partition_key={'name': 'category', 'type': ddb.AttributeType.STRING},
+            sort_key={'name': 'product_id', 'type': ddb.AttributeType.NUMBER},
+            removal_policy=RemovalPolicy.DESTROY
+        )
+        
+        users_table = ddb.Table(
+            self, 'UsersTable',
+            table_name='users',
+            partition_key={'name': 'phone_number', 'type': ddb.AttributeType.STRING},
+            removal_policy=RemovalPolicy.DESTROY
+        )
         # Create an IAM Role for ECS Task Definition
         ecs_task_role = iam.Role(self, "ECSTaskRole",
            assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com")
         )
 
-        # image_bucket.grant_read_write(ecs_task_role)
-        # users_table.grant_read_write_data(ecs_task_role)
-        # products_table.grant_read_write_data(ecs_task_role)
+        image_bucket.grant_read_write(ecs_task_role)
+        users_table.grant_read_write_data(ecs_task_role)
+        products_table.grant_read_write_data(ecs_task_role)
         
-          # Crear una VPC
+        # Crear una VPC
         vpc = ec2.Vpc(self, "UTNCloudVPC",
             max_azs=2, # Se distribuye en dos zonas de disponibilidad
             nat_gateways=0,
@@ -75,7 +75,9 @@ class AppStack(Stack):
                               subnet_type=ec2.SubnetType.PUBLIC,
                               cidr_mask=24
                           )
-                      ]
+                      ],
+            enable_dns_support=True,
+            enable_dns_hostnames=True,
         )
 
     
@@ -98,6 +100,12 @@ class AppStack(Stack):
             description="Allow HTTPS traffic from the internet"
         )
 
+        security_group.add_ingress_rule(
+            ec2.Peer.any_ipv4(),
+            ec2.Port.tcp(22),
+            "Allow SSH access from the internet"
+        )
+
 
         # Crear un ECS Cluster
         cluster = ecs.Cluster(self, "AppCluster",
@@ -110,10 +118,12 @@ class AppStack(Stack):
             vpc=vpc,
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
             instance_type=ec2.InstanceType("t3.micro"),
-            machine_image=ecs.EcsOptimizedImage.amazon_linux2(),  # ECS-optimized AMI
+            machine_image=ecs.EcsOptimizedImage.amazon_linux2(),
             associate_public_ip_address=True,  # Asignar IP pública a las instancias
             min_capacity=1,  # Minimum number of EC2 instances
-            max_capacity=10   # Maximum number of EC2 instances to scale
+            max_capacity=1,   # Maximum number of EC2 instances to scale
+            security_group=security_group
+            
         )
 
         capacity_provider = ecs.AsgCapacityProvider(self, "CapacityProvider",
@@ -128,7 +138,6 @@ class AppStack(Stack):
         fastapi_task_definition = ecs.Ec2TaskDefinition(self, "FastApiTaskDef",
            task_role=ecs_task_role
         )
-
         # Usar una imagen 
         fastapi_container = fastapi_task_definition.add_container("FastApiContainer",
            image=ecs.ContainerImage.from_asset(directory="./backend"),
@@ -179,7 +188,11 @@ class AppStack(Stack):
             task_definition=telegram_task_definition,
             security_groups=[security_group],  
             vpc_subnets= ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
-        
+            deployment_controller=ecs.DeploymentController(
+                type=ecs.DeploymentControllerType.ECS
+            ),
+            min_healthy_percent=0,   # Allow all tasks to be stopped on failure
+            max_healthy_percent=100, # No automatic retries
         )
 
         event_rule = events.Rule(
@@ -189,15 +202,12 @@ class AppStack(Stack):
                 detail_type=["EmailEvent"]
             )
         )
-
         # Add the Lambda function as a target to the EventBridge rule
         event_rule.add_target(events_targets.LambdaFunction(email_lambda))
-
         ecs_task_role.add_to_policy(iam.PolicyStatement(
             actions=["events:PutEvents"],
             resources=["*"]
         ))
-
         # Attach Bedrock permissions to the role
         ecs_task_role.add_to_policy(iam.PolicyStatement(
             actions=[
@@ -208,7 +218,6 @@ class AppStack(Stack):
             ],
             resources=["*"]  # Ideally, restrict this to specific Bedrock resources
         ))
-
 
 
 
