@@ -8,15 +8,20 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import AnyMessage, add_messages
 from langgraph.prebuilt import ToolNode
 
-from app.database.models import Category, Product, User
+from app.config import cfg
+from app.database.models import Category, Product
 
 router = APIRouter()
-IN_AWS = False
-if IN_AWS is True:
+
+if cfg.DEBUG is False:
     from langchain_aws import ChatBedrock
 
-    profile_name = "Your aws profile name"
-    llm = ChatBedrock(model="amazon.titan-text-express-v1", profile_name=profile_name)
+    llm = ChatBedrock(
+        model=cfg.AWS_BEDROCK_MODEL,
+        profile_name=cfg.AWS_PROFILE_NAME,
+        aws_access_key_id=cfg.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=cfg.AWS_SECRET_ACCESS_KEY,
+    )
 else:
     from langchain_ollama.chat_models import ChatOllama
 
