@@ -1,12 +1,11 @@
-from fastapi import FastAPI, HTTPException, Request, status
+import boto3
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.database.models import Product
-from app.workflow import router as workflow_router
-from fastapi import File, UploadFile
-import boto3
 from app.send_event import send_event_to_eventbridge
+from app.workflow import router as workflow_router
 
 app = FastAPI()
 
@@ -20,6 +19,7 @@ app.add_middleware(
 )
 
 app.include_router(workflow_router)
+
 
 @app.get("/")
 async def root():
@@ -39,7 +39,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 @app.post("/load-product")
 async def load_product(name: str, description: str, price: float, image: UploadFile = File(...)):
     s3 = boto3.client("s3")
-    bucket = "product-images"
+    bucket = "product-images-utn-frlp"
     s3.upload_fileobj(image.file, bucket, image.filename)
     image_url = f"https://{bucket}.s3.amazonaws.com/{image.filename}"
     product = Product(name=name, description=description, price=price, image_url=image_url)
