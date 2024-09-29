@@ -34,6 +34,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("Bot is running...")
 
 	b.Start(ctx)
 }
