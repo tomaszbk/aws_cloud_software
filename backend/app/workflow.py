@@ -21,6 +21,7 @@ if cfg.DEBUG is False:
         profile_name=cfg.AWS_PROFILE_NAME,
         aws_access_key_id=cfg.AWS_ACCESS_KEY_ID,
         aws_secret_access_key=cfg.AWS_SECRET_ACCESS_KEY,
+        region_name=cfg.AWS_BEDROCK_REGION,
     )
 else:
     from langchain_ollama.chat_models import ChatOllama
