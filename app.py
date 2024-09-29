@@ -18,9 +18,14 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL")
 SENDER_PASSWORD = os.environ.get("SENDER_PASSWORD")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+AWS_BEDROCK_MODEL= os.environ.get("AWS_BEDROCK_MODEL")
+AWS_BEDROCK_REGION = os.environ.get("AWS_BEDROCK_REGION")
+DEBUG = os.environ.get("DEBUG")
+
 class AppStack(Stack):
     def __init__(self, scope: Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
@@ -64,12 +69,19 @@ class AppStack(Stack):
         vpc = ec2.Vpc(self, "UTNCloudVPC",
             max_azs=2, # Se distribuye en dos zonas de disponibilidad
             nat_gateways=0,
+            subnet_configuration=[
+                          ec2.SubnetConfiguration(
+                              name="Public",
+                              subnet_type=ec2.SubnetType.PUBLIC,
+                              cidr_mask=24
+                          )
+                      ]
         )
 
     
         security_group = ec2.SecurityGroup(self, "EcsSecurityGroup",
         vpc=vpc,
-        description="Allow HTTP traffic",
+        description="Allow outbound traffic",
         allow_all_outbound=True  # Allow all outbound traffic
         )
         
@@ -77,6 +89,13 @@ class AppStack(Stack):
         peer=ec2.Peer.any_ipv4(),  # Allow traffic from any IPv4 address
         connection=ec2.Port.tcp(80),  # Allow traffic on port 80 (HTTP)
         description="Allow HTTP traffic from the internet"
+        )
+
+        # Add inbound rule for HTTPS
+        security_group.add_ingress_rule(
+            peer=ec2.Peer.any_ipv4(),  # Allow traffic from  from the internet
+            connection=ec2.Port.tcp(443),  # Allow TCP traffic on port 443
+            description="Allow HTTPS traffic from the internet"
         )
 
 
@@ -104,7 +123,6 @@ class AppStack(Stack):
       
         cluster.add_asg_capacity_provider(capacity_provider)
 
-        
 
         # Definir una imagen de Docker que será usada por la tarea ECS
         fastapi_task_definition = ecs.Ec2TaskDefinition(self, "FastApiTaskDef",
@@ -115,7 +133,9 @@ class AppStack(Stack):
         fastapi_container = fastapi_task_definition.add_container("FastApiContainer",
            image=ecs.ContainerImage.from_asset(directory="./backend"),
            container_name="FastApiContainer7349874289",
-           memory_limit_mib=256,                          
+           logging=ecs.LogDrivers.aws_logs(stream_prefix="fastapi-backend"),
+           memory_limit_mib=256,
+           environment={"DEBUG": DEBUG, "AWS_BEDROCK_MODEL": AWS_BEDROCK_MODEL, "AWS_BEDROCK_REGION": AWS_BEDROCK_REGION},                          
         )
 
         # Abrir el puerto
@@ -143,7 +163,7 @@ class AppStack(Stack):
             memory_limit_mib=256,
             logging=ecs.LogDrivers.aws_logs(stream_prefix="telegram"),
             environment={"TELEGRAM_BOT_TOKEN": TELEGRAM_BOT_TOKEN, 
-                         "BACKEND_HOST": 'http://fastapiservice78987987.appcluster098098098095.us-west-2.ecs.internal',
+                         "BACKEND_HOST": 'http://fastapiservice78987987.appcluster098098098095.us-east-1.ecs.internal',
                          "BACKEND_PORT": '8000'},                           
         )
 
@@ -163,11 +183,11 @@ class AppStack(Stack):
         )
 
         event_rule = events.Rule(
-            self, "MyEventRule",
-            event_pattern={
-                "source": ["my.application"],
-                "detail-type": ["MyAppEvent"],
-            }
+            self, id="EmailNotificationRule",
+            event_pattern=events.EventPattern(
+                source=["fastapi.backend"],
+                detail_type=["EmailEvent"]
+            )
         )
 
         # Add the Lambda function as a target to the EventBridge rule
@@ -193,5 +213,5 @@ class AppStack(Stack):
 
 
 app = App()
-AppStack(app, "AppStack")
+AppStack(app, "UTNCloudAppStack")
 app.synth()

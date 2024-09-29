@@ -13,14 +13,11 @@ from app.database.models import Category, Product
 
 router = APIRouter()
 
-if cfg.DEBUG is False:
+if cfg.DEBUG == "False":
     from langchain_aws import ChatBedrock
 
     llm = ChatBedrock(
-        model=cfg.AWS_BEDROCK_MODEL,
-        profile_name=cfg.AWS_PROFILE_NAME,
-        aws_access_key_id=cfg.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=cfg.AWS_SECRET_ACCESS_KEY,
+        model_id=cfg.AWS_BEDROCK_MODEL,
         region_name=cfg.AWS_BEDROCK_REGION,
     )
 else:
