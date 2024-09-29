@@ -6,6 +6,7 @@ from app.database.models import Product
 from app.workflow import router as workflow_router
 from fastapi import File, UploadFile
 import boto3
+from app.send_event import send_event_to_eventbridge
 
 app = FastAPI()
 
@@ -44,3 +45,8 @@ async def load_product(name: str, description: str, price: float, image: UploadF
     product = Product(name=name, description=description, price=price, image_url=image_url)
 
     return {"message": f"Product {product.name} loaded. image url: {product.image_url}"}
+
+
+@app.post("/send-email")
+async def send_email(destiny_email: str):
+    send_event_to_eventbridge(destiny_email)

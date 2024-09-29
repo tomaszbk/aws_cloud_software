@@ -8,14 +8,17 @@ client = boto3.client(
 )
 
 
-def send_event_to_eventbridge(event_bus_name, source, detail_type, detail):
+def send_event_to_eventbridge(destiny_email: str):
+    event_detail = {
+        'destiny_email': destiny_email  # This matches the Go Lambda's struct
+    }
     response = client.put_events(
         Entries=[
             {
-                "EventBusName": event_bus_name,
-                "Source": source,
-                "DetailType": detail_type,
-                "Detail": json.dumps(detail),
+                "EventBusName": "default",
+                "Source": "fastapi.backend",
+                "DetailType": "EmailEvent",
+                "Detail": json.dumps(event_detail),
             }
         ]
     )
@@ -25,12 +28,3 @@ def send_event_to_eventbridge(event_bus_name, source, detail_type, detail):
         raise Exception(f"Failed to send event: {response['Entries']}")
     elif response["FailedEntryCount"] == 0:
         print(f"Successfully sent event: {response['Entries']}")
-
-
-if __name__ == "__main__":
-    event_bus_name = "default"
-    source = "email.lambda.caller"
-    detail_type = "Random"
-    detail = {"key1": "value1", "key2": "value2"}
-
-    send_event_to_eventbridge(event_bus_name, source, detail_type, detail)

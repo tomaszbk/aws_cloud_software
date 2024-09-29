@@ -9,7 +9,8 @@ from aws_cdk import (
     aws_dynamodb as ddb,
     aws_iam as iam,
     aws_autoscaling as autoscaling,
-
+    aws_events as events,
+    aws_events_targets as events_targets,
 )
 
 from constructs import Construct
@@ -25,12 +26,12 @@ class AppStack(Stack):
         super().__init__(scope, id, **kwargs)
 
           
-        #email_lambda = _lambda.DockerImageFunction(
-        #    self,
-        #    "EmailLambda",
-        #    code=_lambda.DockerImageCode.from_image_asset(directory="./email_lambda"),
-        #    environment={"SENDER_EMAIL": SENDER_EMAIL, "SENDER_PASSWORD": SENDER_PASSWORD},
-        #)
+        email_lambda = _lambda.DockerImageFunction(
+           self,
+           "EmailLambda",
+           code=_lambda.DockerImageCode.from_image_asset(directory="./email_lambda"),
+           environment={"SENDER_EMAIL": SENDER_EMAIL, "SENDER_PASSWORD": SENDER_PASSWORD},
+        )
 
         #image_bucket = s3.Bucket(self, "ProductImages", 
         #    bucket_name="product-images-utn-frlp", 
@@ -50,14 +51,14 @@ class AppStack(Stack):
         #    partition_key={'name': 'phone_number', 'type': ddb.AttributeType.STRING},
         #    removal_policy=RemovalPolicy.DESTROY
         #)
-        ## Create an IAM Role for ECS Task Definition
-        #ecs_task_role = iam.Role(self, "ECSTaskRole",
-        #    assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com")
-        #)
+        # Create an IAM Role for ECS Task Definition
+        ecs_task_role = iam.Role(self, "ECSTaskRole",
+           assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com")
+        )
 
-        #image_bucket.grant_read_write(ecs_task_role)
-        #users_table.grant_read_write_data(ecs_task_role)
-        #products_table.grant_read_write_data(ecs_task_role)
+        # image_bucket.grant_read_write(ecs_task_role)
+        # users_table.grant_read_write_data(ecs_task_role)
+        # products_table.grant_read_write_data(ecs_task_role)
         
           # Crear una VPC
         vpc = ec2.Vpc(self, "UTNCloudVPC",
@@ -105,34 +106,31 @@ class AppStack(Stack):
 
         
 
-        ## Definir una imagen de Docker que será usada por la tarea ECS
-        #fastapi_task_definition = ecs.Ec2TaskDefinition(self, "FastApiTaskDef",
-        #    task_role=ecs_task_role
-        #)
+        # Definir una imagen de Docker que será usada por la tarea ECS
+        fastapi_task_definition = ecs.Ec2TaskDefinition(self, "FastApiTaskDef",
+           task_role=ecs_task_role
+        )
 
-        ## Usar una imagen 
-        #fastapi_container = fastapi_task_definition.add_container("FastApiContainer",
-        #    image=ecs.ContainerImage.from_asset(directory="./backend"),
-        #    container_name="FastApiContainer7349874289",
-        #    memory_limit_mib=256,                          
-        #)
+        # Usar una imagen 
+        fastapi_container = fastapi_task_definition.add_container("FastApiContainer",
+           image=ecs.ContainerImage.from_asset(directory="./backend"),
+           container_name="FastApiContainer7349874289",
+           memory_limit_mib=256,                          
+        )
 
-        ## Abrir el puerto
-        #fastapi_container.add_port_mappings(
-        #    ecs.PortMapping(container_port=8000)
-        #)
+        # Abrir el puerto
+        fastapi_container.add_port_mappings(
+           ecs.PortMapping(container_port=8000)
+        )
 
-        ## Crear un servicio ECS para ejecutar la tarea en EC2
-        #fastapi_ecs_service = ecs.Ec2Service(self, "FastApiService",
-        #    service_name= 'fastapiservice78987987',
-        #    cluster=cluster,
-        #    task_definition=fastapi_task_definition,
-        #   
-        #)
+        # Crear un servicio ECS para ejecutar la tarea en EC2
+        fastapi_ecs_service = ecs.Ec2Service(self, "FastApiService",
+           service_name= 'fastapiservice78987987',
+           cluster=cluster,
+           task_definition=fastapi_task_definition,
+          
+        )
 
-     
-
-    
 
         # Definir una imagen de Docker que será usada por la tarea ECS
         telegram_task_definition = ecs.Ec2TaskDefinition(self, "TelegramTaskDef",
@@ -163,6 +161,33 @@ class AppStack(Stack):
             vpc_subnets= ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
         
         )
+
+        event_rule = events.Rule(
+            self, "MyEventRule",
+            event_pattern={
+                "source": ["my.application"],
+                "detail-type": ["MyAppEvent"],
+            }
+        )
+
+        # Add the Lambda function as a target to the EventBridge rule
+        event_rule.add_target(events_targets.LambdaFunction(email_lambda))
+
+        ecs_task_role.add_to_policy(iam.PolicyStatement(
+            actions=["events:PutEvents"],
+            resources=["*"]
+        ))
+
+        # Attach Bedrock permissions to the role
+        ecs_task_role.add_to_policy(iam.PolicyStatement(
+            actions=[
+                "bedrock:InvokeModel",          # Action to invoke a model in Bedrock
+                "bedrock:ListModels",           # Action to list available models
+                "bedrock:GetModel",             # Action to get details of a specific model
+                # Add any other necessary Bedrock permissions here
+            ],
+            resources=["*"]  # Ideally, restrict this to specific Bedrock resources
+        ))
 
 
 
