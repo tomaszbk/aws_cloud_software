@@ -8,15 +8,21 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import AnyMessage, add_messages
 from langgraph.prebuilt import ToolNode
 
-from app.database.models import Category, Product, User
+from app.config import cfg
+from app.database.models import Category, Product
 
 router = APIRouter()
-IN_AWS = False
-if IN_AWS is True:
+
+if cfg.DEBUG is False:
     from langchain_aws import ChatBedrock
 
-    profile_name = "Your aws profile name"
-    llm = ChatBedrock(model="amazon.titan-text-express-v1", profile_name=profile_name)
+    llm = ChatBedrock(
+        model=cfg.AWS_BEDROCK_MODEL,
+        profile_name=cfg.AWS_PROFILE_NAME,
+        aws_access_key_id=cfg.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=cfg.AWS_SECRET_ACCESS_KEY,
+        region_name=cfg.AWS_BEDROCK_REGION,
+    )
 else:
     from langchain_ollama.chat_models import ChatOllama
 
@@ -79,6 +85,8 @@ def route_agent(state: State):
             return "products_agent"
         case "PURCHASE":
             return "purchase_agent"
+        case _:
+            return "conversation_agent"
     return action
 
 
@@ -93,6 +101,12 @@ def make_purchase(product_id: str, user_name: str, user_email: str) -> str:
     return success_message
 
 
+@tool
+def get_user_data():
+    """Requests the user to provide their name and email."""
+    return "Please provide your name and email."
+
+
 orchestration_tools = [choose_action]
 orchestration_tool_node = ToolNode(orchestration_tools)
 orchestration_model = llm.bind_tools(orchestration_tools)
@@ -103,7 +117,7 @@ products_tools = [get_products, get_product_details]
 products_tools_node = ToolNode(products_tools)
 products_model = llm.bind_tools(products_tools)
 
-purchase_tools = [make_purchase]
+purchase_tools = [make_purchase, get_user_data]
 purchase_tools_node = ToolNode(purchase_tools)
 purchase_model = llm.bind_tools(purchase_tools)
 
@@ -119,10 +133,17 @@ def should_continue_products_agent(state: State):
 
 # Define the function that calls the model
 def call_orchestrator_agent(state: State):
-    messages = state["messages"]
+    prompt = """You're an orchestor agent that will call the choose_action tool
+    to determine the agent to call next.
+    Use the tool, dont answer directly.
+    Read the chat history to determine the action to take.
+    """
+    messages = state["messages"].copy()
     latest_user_prompt = messages[-1].content
+    messages.append(SystemMessage(content=prompt))
+    messages.append(HumanMessage(content=latest_user_prompt))
     response = orchestration_model.invoke(messages)
-    # We return a list, because this will get added to the existing list
+
     return {"messages": [response], "latest_user_prompt": latest_user_prompt}
 
 
@@ -131,9 +152,10 @@ def call_conversation_agent(state: State):
             The ecommerce is called utn-shop. We sell these categories: tv, cellphone, laptop.
             We are open everyday from 9am to 5pm. We are located at 1234 Main St, Anytown, USA.
             Our payment methods are credit card, paypal, bitcoin and mercado pago."""
-    state["messages"].append(SystemMessage(content=prompt))
-    state["messages"].append(state["latest_user_prompt"])
-    response = conversation_model.invoke(state["messages"])
+    messages = state["messages"].copy()
+    messages.append(SystemMessage(content=prompt))
+    messages.append(state["latest_user_prompt"])
+    response = conversation_model.invoke(messages)
     return {"messages": [response]}
 
 
@@ -149,12 +171,13 @@ def call_products_agent(state: State):
 
 
 def call_purchase_agent(state: State):
-    prompt = f"""You're an agent that will handle the purchase of a product.
-    the user is: {state["user"]}.
-    Use the tool call to process the purchase."""
-    state["messages"].append(SystemMessage(content=prompt))
-    state["messages"].append(state["latest_user_prompt"])
-    response = purchase_model.invoke(state["messages"])
+    prompt = """You're an agent that will handle the purchase of a product.
+    If the user hasn't provided his name and email, ask for it.
+    """
+    messages = state["messages"].copy()
+    messages.append(SystemMessage(content=prompt))
+    messages.append(state["latest_user_prompt"])
+    response = purchase_model.invoke(messages)
     return {"messages": [response]}
 
 

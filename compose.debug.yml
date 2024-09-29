@@ -27,3 +27,8 @@ services:
         reservations:
           devices:
             - capabilities: [gpu]
+
+
+volumes:
+  ollama:
+    name: ollama
