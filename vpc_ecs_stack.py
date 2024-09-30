@@ -1,16 +1,16 @@
+import os
+
 from aws_cdk import (
     Stack,
     aws_ec2 as ec2,
     aws_ecs as ecs,
     aws_iam as iam,
+    aws_servicediscovery as servicediscovery,
 )
-from storage_stack import StorageStack
-
 from constructs import Construct
-
-import os
-
 from dotenv import load_dotenv
+
+from storage_stack import StorageStack
 
 load_dotenv()
 
@@ -20,6 +20,7 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 AWS_BEDROCK_MODEL = os.environ.get("AWS_BEDROCK_MODEL")
 AWS_BEDROCK_REGION = os.environ.get("AWS_BEDROCK_REGION")
 DEBUG = os.environ.get("DEBUG")
+
 
 class VpcEcsStack(Stack):
     def __init__(self, scope: Construct, id: str, storage_stack: StorageStack, **kwargs):
@@ -38,6 +39,10 @@ class VpcEcsStack(Stack):
             ],
             enable_dns_support=True,
             enable_dns_hostnames=True,
+        )
+
+        namespace = servicediscovery.PrivateDnsNamespace(
+            self, "UtnCloudNamespace", name="utn-shop.namespace", vpc=vpc
         )
 
         security_group = ec2.SecurityGroup(
@@ -61,18 +66,17 @@ class VpcEcsStack(Stack):
             description="Allow HTTPS traffic from the internet",
         )
 
-         # Add inbound rule for HTTPS
+        # Add inbound rule for HTTPS
         security_group.add_ingress_rule(
-            peer=ec2.Peer.any_ipv4(), 
+            peer=ec2.Peer.any_ipv4(),
             connection=ec2.Port.tcp(8000),  # Allow TCP traffic on port 8000
             description="Allow traffic from the internet",
         )
 
-
         # Crear un ECS Cluster
         cluster = ecs.Cluster(self, "AppCluster", cluster_name="UtnCloudECS_Cluster", vpc=vpc)
 
-         # Create an IAM Role for ECS Task Definition
+        # Create an IAM Role for ECS Task Definition
         ecs_task_role = iam.Role(
             self, "ECSTaskRole", assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com")
         )
@@ -125,9 +129,11 @@ class VpcEcsStack(Stack):
             service_name="fastapiservice",
             cluster=cluster,
             task_definition=fastapi_task_definition,
+            security_groups=[security_group],
             assign_public_ip=True,
-            deployment_controller=ecs.DeploymentController(type=ecs.DeploymentControllerType.ECS),
-            security_groups=[security_group]
+            cloud_map_options=ecs.CloudMapOptions(
+                name="backend-service", cloud_map_namespace=namespace
+            ),
         )
 
         # Definir una imagen de Docker que será usada por la tarea ECS
@@ -142,7 +148,7 @@ class VpcEcsStack(Stack):
             logging=ecs.LogDrivers.aws_logs(stream_prefix="telegram"),
             environment={
                 "TELEGRAM_BOT_TOKEN": TELEGRAM_BOT_TOKEN,
-                "BACKEND_HOST": "fastapiservice.UtnCloudECS_Cluster.us-east-1.ecs.internal",
+                "BACKEND_HOST": "backend-service.utn-shop.namespace",
                 "BACKEND_PORT": "8000",
             },
         )
@@ -161,8 +167,8 @@ class VpcEcsStack(Stack):
             cluster=cluster,
             task_definition=telegram_task_definition,
             security_groups=[security_group],
-            deployment_controller=ecs.DeploymentController(type=ecs.DeploymentControllerType.ECS),
             assign_public_ip=True,
+            cloud_map_options=ecs.CloudMapOptions(name="telegram-service", cloud_map_namespace=namespace),
         )
 
         telegram_ecs_service.connections.allow_from_any_ipv4(
