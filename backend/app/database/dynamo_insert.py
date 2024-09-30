@@ -6,6 +6,7 @@ def insert_user(user: User):
     try:
         response = users_table.put_item(
             Item=user.model_dump(),
+            ConditionExpression='attribute_not_exists(phone_number)'
         )
         print("Item inserted successfully:", response)
     except Exception as e:
