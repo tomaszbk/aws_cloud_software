@@ -12,7 +12,13 @@ import (
 
 type RequestEvent struct {
 	DestinyEmail string `json:"destiny_email"`
+	DestinyName  string `json:"destiny_name"`
 }
+
+const message string = `
+Purchase complete! Thank you for your purchase, %s.
+
+Best regards, utn-shop`
 
 func handler(ctx context.Context, event RequestEvent) (events.APIGatewayProxyResponse, error) {
 	// Create a new email message
@@ -24,7 +30,7 @@ func handler(ctx context.Context, event RequestEvent) (events.APIGatewayProxyRes
 	m.SetHeader("From", cfg.SenderEmail)
 	m.SetHeader("To", destinyEmail)
 	m.SetHeader("Subject", "Hello from Lambda!")
-	m.SetBody("text/plain", "Email enviado con exito!! de tomas")
+	m.SetBody("text/plain", fmt.Sprintf(message, event.DestinyName))
 	// Send the email using SMTP
 	fmt.Println("Sending email...")
 	fmt.Println("Username:", cfg.SenderEmail)

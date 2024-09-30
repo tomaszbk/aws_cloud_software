@@ -10,6 +10,7 @@ from langgraph.prebuilt import ToolNode
 
 from app.config import cfg
 from app.database.models import Category, Product
+from app.send_event import send_event_to_eventbridge
 
 router = APIRouter()
 
@@ -95,6 +96,7 @@ def make_purchase(product_id: str, user_name: str, user_email: str) -> str:
         f"Purchase successful for product {product_id} by user {user_name} {user_email}."
     )
     print(success_message)
+    send_event_to_eventbridge(user_email, user_name)
     return success_message
 
 

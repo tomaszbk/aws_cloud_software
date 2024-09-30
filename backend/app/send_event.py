@@ -2,15 +2,18 @@ import json
 
 import boto3
 
+from app.config import cfg
+
 client = boto3.client(
     "events",
-    region_name="us-east-1",
+    region_name=cfg.AWS_REGION,
 )
 
 
-def send_event_to_eventbridge(destiny_email: str):
+def send_event_to_eventbridge(destiny_email: str, user_name: str):
     event_detail = {
-        'destiny_email': destiny_email  # This matches the Go Lambda's struct
+        "destiny_email": destiny_email,  # This matches the Go Lambda's struct
+        "destiny_name": user_name,
     }
     response = client.put_events(
         Entries=[

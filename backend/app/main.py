@@ -3,6 +3,7 @@ from fastapi import FastAPI, File, HTTPException, Request, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.config import cfg
 from app.database.models import Product
 from app.send_event import send_event_to_eventbridge
 from app.workflow import router as workflow_router
@@ -39,14 +40,16 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 @app.post("/load-product")
 async def load_product(name: str, description: str, price: float, image: UploadFile = File(...)):
     s3 = boto3.client("s3")
-    bucket = "product-images-utn-frlp"
+    bucket = cfg.IMAGE_BUCKET_NAME
     s3.upload_fileobj(image.file, bucket, image.filename)
     image_url = f"https://{bucket}.s3.amazonaws.com/{image.filename}"
     product = Product(name=name, description=description, price=price, image_url=image_url)
 
-    return {"message": f"Product {product.name} loaded. image url: {product.image_url}"}
+    return {
+        "message": f"Product {product.name} loaded. image url: {product.image_url}. full product: {product}"
+    }
 
 
 @app.post("/send-email")
-async def send_email(destiny_email: str):
-    send_event_to_eventbridge(destiny_email)
+async def send_email(destiny_email: str, user_name: str):
+    send_event_to_eventbridge(destiny_email, user_name)
