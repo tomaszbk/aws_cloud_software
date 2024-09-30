@@ -9,7 +9,9 @@ from langgraph.graph.message import AnyMessage, add_messages
 from langgraph.prebuilt import ToolNode
 
 from app.config import cfg
-from app.database.models import Category, Product
+from app.database.dynamo_get import get_product_details, get_products
+from app.database.dynamo_insert import add_purchase, insert_user
+from app.database.models import Category, Product, User
 from app.send_event import send_event_to_eventbridge
 
 router = APIRouter()
@@ -43,35 +45,16 @@ def choose_action(action: str):
 
 
 @tool
-def get_products(category: Category) -> list[Product]:
+def get_products_list(category: Category) -> list[Product]:
     """Returns list of products in the specified category."""
-    match category:
-        case Category.tv:
-            return [Product(name="Samsung TV", price=1000, category=category)]
-        case Category.cellphone:
-            return [Product(name="iPhone", price=1000, category=category)]
-        case Category.laptop:
-            return [
-                Product(
-                    id="144d3f1f-1e2b-4b4b-8b1b-4f6c7f1f4f1f",
-                    name="Macbook",
-                    price=1000,
-                    category=category,
-                )
-            ]
+    products = get_products(category)
+    return [(product.name, product.price) for product in products]
 
 
 @tool
-def get_product_details(product_id: str) -> Product:
+def get_product_details_tool(product_id: str) -> Product:
     """Returns details of the product with the specified id."""
-    return Product(
-        id="144d3f1f-1e2b-4b4b-8b1b-4f6c7f1f4f1f",
-        name="Macbook",
-        price=1000,
-        category="laptop",
-        image_url="https://example.com/macbook.jpg",
-        description="A laptop",
-    )
+    return get_product_details(product_id)
 
 
 def route_agent(state: State):
@@ -89,9 +72,14 @@ def route_agent(state: State):
 
 
 @tool
-def make_purchase(product_id: str, user_name: str, user_email: str) -> str:
+def make_purchase(product_id: str, user_name: str, user_email: str, user_phone_number) -> str:
     """Makes a purchase for the specified product and user.
     The user data must be provided as a dictionary, NOT a string."""
+    user = User(name=user_name, email=user_email, phone_number=user_phone_number)
+    insert_user(user)
+    product = get_product_details(product_id)
+    add_purchase(user.phone_number, product)
+
     success_message = (
         f"Purchase successful for product {product_id} by user {user_name} {user_email}."
     )
@@ -102,8 +90,8 @@ def make_purchase(product_id: str, user_name: str, user_email: str) -> str:
 
 @tool
 def get_user_data():
-    """Requests the user to provide their name and email."""
-    return "Please provide your name and email."
+    """Requests the user to provide their name, email and phone number."""
+    return "Please provide your name, email and phone number."
 
 
 orchestration_tools = [choose_action]
