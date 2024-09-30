@@ -17,8 +17,8 @@ class StorageStack(Stack):
         self.products_table = ddb.Table(
             self, 'ProductsTable',
             table_name='products',
-            partition_key={'name': 'category', 'type': ddb.AttributeType.STRING},
-            sort_key={'name': 'product_id', 'type': ddb.AttributeType.NUMBER},
+            partition_key={'name': 'product_id', 'type': ddb.AttributeType.STRING},
+            sort_key={'name': 'category', 'type': ddb.AttributeType.STRING},
             removal_policy=RemovalPolicy.DESTROY
         )
 
