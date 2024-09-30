@@ -1,7 +1,7 @@
 from typing import Annotated, TypedDict
 
 from fastapi.routing import APIRouter
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
@@ -17,10 +17,10 @@ from app.send_event import send_event_to_eventbridge
 router = APIRouter()
 
 if cfg.DEBUG == "False":
-    from langchain_aws import ChatBedrock
+    from langchain_aws import ChatBedrockConverse
 
-    llm = ChatBedrock(
-        model_id=cfg.AWS_BEDROCK_MODEL,
+    llm = ChatBedrockConverse(
+        model=cfg.AWS_BEDROCK_MODEL,
         region_name=cfg.AWS_BEDROCK_REGION,
     )
 else:
