@@ -1,7 +1,8 @@
 import uuid
+from decimal import Decimal
 from enum import Enum
 
-from pydantic import UUID4, BaseModel
+from pydantic import BaseModel
 
 
 class User(BaseModel):
@@ -18,9 +19,9 @@ class Category(str, Enum):
 
 
 class Product(BaseModel):
-    product_id: UUID4 = uuid.uuid4()
+    product_id: str = str(uuid.uuid4())
     name: str
-    price: float
+    price: Decimal
     description: str = None
     category: Category
     image_url: str = None
