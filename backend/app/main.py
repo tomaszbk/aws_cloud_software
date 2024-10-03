@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from app.config import cfg
 from app.database.dynamo_get import get_products, get_user
 from app.database.dynamo_insert import insert_product, insert_user
-from app.database.models import Product, User
+from app.database.models import Category, Product, User
 from app.send_event import send_event_to_eventbridge
 from app.workflow import router as workflow_router
 
@@ -41,7 +41,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.post("/load-product")
 async def load_product(
-    name: str, description: str, price: float, category: str, image: UploadFile = File(...)
+    name: str, description: str, price: float, category: Category, image: UploadFile = File(...)
 ):
     s3 = boto3.client("s3")
     bucket = cfg.IMAGE_BUCKET_NAME

@@ -1,13 +1,11 @@
-import boto3
+from boto3.dynamodb.conditions import Attr
 
 from app.database.dynamo_config import products_table, users_table
 
 
 def get_products(category: str):
     """Returns the first 3 products from the products table."""
-    response = products_table.query(
-        KeyConditionExpression=boto3.dynamodb.conditions.Key("category").eq(category)
-    )
+    response = products_table.scan(FilterExpression=Attr("category").eq(category))
     if not response["Items"]:
         return []
     return response["Items"][:3]
