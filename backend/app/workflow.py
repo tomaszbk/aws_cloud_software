@@ -34,6 +34,25 @@ class State(TypedDict):
     latest_user_prompt: str
 
 
+def clean_tools(messages: list):
+    if messages[-1].content in ["NORMAL_CONVERSATION", "GET_PRODUCTS", "PURCHASE"]:
+        new_messages = [
+            message
+            for message in messages
+            if not (type(message) is ToolMessage or message.content == "")
+        ]
+        return new_messages
+    else:
+        last_tool = messages.pop()
+        new_messages = [
+            message
+            for message in messages
+            if not (type(message) is ToolMessage or message.content == "")
+        ]
+        new_messages.append(last_tool)
+        return new_messages
+
+
 # TOOLS
 @tool
 def choose_action(action: str):
@@ -124,8 +143,9 @@ def call_orchestrator_agent(state: State):
     to determine the agent to call next.
     Use the tool, dont answer directly.
     Read the chat history to determine the action to take.
+    To know which cateogires we offer use the conversational agent
     """
-    messages = state["messages"].copy()
+    messages = clean_tools(state["messages"].copy())
     latest_user_prompt = messages[-1].content
     messages.append(SystemMessage(content=prompt))
     messages.append(HumanMessage(content=latest_user_prompt))
@@ -139,9 +159,9 @@ def call_conversation_agent(state: State):
             The ecommerce is called utn-shop. We sell these categories: tv, cellphone, laptop.
             We are open everyday from 9am to 5pm. We are located at 1234 Main St, Anytown, USA.
             Our payment methods are credit card, paypal, bitcoin and mercado pago."""
-    messages = state["messages"].copy()
+    messages = clean_tools(state["messages"].copy())
     messages.append(SystemMessage(content=prompt))
-    messages.append(state["latest_user_prompt"])
+    messages.append(HumanMessage(state["latest_user_prompt"]))
     response = conversation_model.invoke(messages)
     return {"messages": [response]}
 
@@ -150,10 +170,12 @@ def call_products_agent(state: State):
     prompt = """You're an agent that can access the products database.
     We have the following categories of products: tv, cellphone, laptop.
     Do not offer products that were not returned from a tool call."""
-    if state["messages"][-1].content == "GET_PRODUCTS":
-        state["messages"].append(SystemMessage(content=prompt))
-        state["messages"].append(state["latest_user_prompt"])
-    response = products_model.invoke(state["messages"])
+    messages = state["messages"]
+    if messages[-1].content == "GET_PRODUCTS":
+        messages = clean_tools(messages.copy())
+        messages.append(SystemMessage(content=prompt))
+        messages.append(HumanMessage(state["latest_user_prompt"]))
+    response = products_model.invoke(messages)
     return {"messages": [response]}
 
 
@@ -161,9 +183,9 @@ def call_purchase_agent(state: State):
     prompt = """You're an agent that will handle the purchase of a product.
     If the user hasn't provided his name and email, ask for it.
     """
-    messages = state["messages"].copy()
+    messages = clean_tools(state["messages"].copy())
     messages.append(SystemMessage(content=prompt))
-    messages.append(state["latest_user_prompt"])
+    messages.append(HumanMessage(state["latest_user_prompt"]))
     response = purchase_model.invoke(messages)
     return {"messages": [response]}
 
