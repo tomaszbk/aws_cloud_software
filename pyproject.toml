@@ -3,3 +3,6 @@ line-length = 100
 
 [tool.ruff.lint]
 ignore = ["E722"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true

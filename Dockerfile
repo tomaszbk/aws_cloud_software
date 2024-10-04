@@ -1,5 +1,3 @@
-ARG AWS_CDK_VERSION=2.160.0
-
 FROM alpine
 
 RUN apk -v --no-cache --update add \
@@ -19,7 +17,7 @@ RUN apk -v --no-cache --update add \
         py-pip \
         && \
     update-ca-certificates && \
-    npm install -g aws-cdk@${AWS_CDK_VERSION}
+    npm install -g aws-cdk
 
 COPY requirements.txt requirements.txt
 
