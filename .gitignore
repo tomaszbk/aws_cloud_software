@@ -2,3 +2,5 @@ bootstrap
 venv
 .env
 cdk.out
+src
+*__pycache__
