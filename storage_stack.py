@@ -12,7 +12,8 @@ class StorageStack(Stack):
 
         self.image_bucket = s3.Bucket(self, "ProductImages",
             bucket_name="product-images-utn-frlp",
-            removal_policy=RemovalPolicy.DESTROY)
+            removal_policy=RemovalPolicy.DESTROY,
+            auto_delete_objects=True,)
 
         self.products_table = ddb.Table(
             self, 'ProductsTable',

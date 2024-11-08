@@ -1,8 +1,8 @@
 services:
 
 
-  backend:
-    image: backend
+  backend-dev:
+    image: backend-dev
     build:
       context: backend/
       dockerfile: dev.Dockerfile
