@@ -12,6 +12,9 @@ services:
     volumes:
       - .:/code
       - /code/backend/.venv
+      - '${HOME}/.aws/:/root/.aws/'
+    env_file:
+      - .env
 
   ollama:
     image: ollama/ollama
