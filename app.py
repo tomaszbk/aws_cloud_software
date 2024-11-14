@@ -1,10 +1,10 @@
 from aws_cdk import App
 
-from storage_stack import StorageStack 
+from stacks.storage_stack import StorageStack 
 
-from main_stack import MainStack 
+from stacks.main_stack import MainStack 
 
-from vpc_ecs_stack import VpcEcsStack
+from stacks.vpc_ecs_stack import VpcEcsStack
         
 app = App()
 

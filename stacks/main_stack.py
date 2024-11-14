@@ -17,8 +17,6 @@ from aws_cdk import (
     aws_s3 as s3,
 )
 from constructs import Construct
-from storage_stack import StorageStack
-from vpc_ecs_stack import VpcEcsStack
 import os
 
 from dotenv import load_dotenv
@@ -30,10 +28,8 @@ SENDER_PASSWORD = os.environ.get("SENDER_PASSWORD")
 
 
 class MainStack(Stack):
-    def __init__(self, scope: Construct, id: str, storage_stack: StorageStack, **kwargs):
+    def __init__(self, scope: Construct, id: str, **kwargs):
         super().__init__(scope, id, **kwargs)
-
-        vpc_ecs_stack = VpcEcsStack(self, "VpcEcsStack", storage_stack=storage_stack)
 
         email_lambda = _lambda.DockerImageFunction(
             self,

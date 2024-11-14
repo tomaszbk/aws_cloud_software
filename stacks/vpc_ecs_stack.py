@@ -10,7 +10,7 @@ from aws_cdk import (
 from constructs import Construct
 from dotenv import load_dotenv
 
-from storage_stack import StorageStack
+from .storage_stack import StorageStack
 
 load_dotenv()
 
