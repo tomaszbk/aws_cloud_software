@@ -2,7 +2,6 @@ from typing import Annotated, TypedDict
 
 from fastapi.routing import APIRouter
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
-from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import AnyMessage, add_messages
@@ -54,7 +53,6 @@ def clean_tools(messages: list):
 
 
 # TOOLS
-@tool
 def choose_action(action: str):
     """Chooses the action to use based on the chat history.
     NORMAL_CONVERSATION : if the user asks about the business, what we offer, what categories of products we have, who we are, or none of below.
@@ -63,14 +61,12 @@ def choose_action(action: str):
     return action
 
 
-@tool
 def get_products_list(category: Category) -> list[Product]:
     """Returns list of products in the specified category."""
     products = get_products(category)
     return [(product.name, product.price) for product in products]
 
 
-@tool
 def get_product_details_tool(product_id: str) -> Product:
     """Returns details of the product with the specified id."""
     return get_product_details(product_id)
@@ -90,7 +86,6 @@ def route_agent(state: State):
     return action
 
 
-@tool
 def make_purchase(product_id: str, user_name: str, user_email: str, user_phone_number) -> str:
     """Makes a purchase for the specified product and user.
     The user data must be provided as a dictionary, NOT a string."""
@@ -107,7 +102,6 @@ def make_purchase(product_id: str, user_name: str, user_email: str, user_phone_n
     return success_message
 
 
-@tool
 def get_user_data():
     """Requests the user to provide their name, email and phone number."""
     return "Please provide your name, email and phone number."
