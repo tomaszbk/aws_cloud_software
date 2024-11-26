@@ -10,7 +10,7 @@ app = App()
 
 storage_stack = StorageStack(app, "UTNCloudStorageStack")
 
-MainStack(app, "UTNCloudAppStack", storage_stack=storage_stack)
+MainStack(app, "UTNCloudAppStack")
 
 VpcEcsStack(app, "UTNCloudVpcEcsStack", storage_stack=storage_stack)
 

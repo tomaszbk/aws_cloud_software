@@ -1,10 +1,12 @@
-FROM python:3.12-slim
+FROM python:3.12-alpine
 
-RUN --mount=type=cache,target=/var/cache/apt \
-    apt update && apt install -y \
+RUN apk update && apk add --no-cache \
     nodejs \
     npm \
-    docker.io \
+    docker-cli \
+    docker-cli-buildx \
+    bash \
+    git \
     && \
     npm install -g aws-cdk
 
@@ -12,8 +14,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 COPY requirements.txt requirements.txt
 
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install -r requirements.txt --system
+RUN uv pip install -r requirements.txt --system
 
 VOLUME [ "/root/.aws" ]
 
