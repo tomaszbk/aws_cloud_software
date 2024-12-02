@@ -1,7 +1,7 @@
 from typing import Annotated, TypedDict
 
 from fastapi.routing import APIRouter
-from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import AnyMessage, add_messages
@@ -25,7 +25,7 @@ if cfg.DEBUG == "False":
 else:
     from langchain_ollama.chat_models import ChatOllama
 
-    llm = ChatOllama(model="llama3.1", base_url="http://aws-ollama:11434")
+    llm = ChatOllama(model="llama3.2-vision", base_url="http://aws-ollama:11434")
 
 
 class State(TypedDict):
@@ -38,7 +38,11 @@ def clean_tools(messages: list):
         new_messages = [
             message
             for message in messages
-            if not (type(message) is ToolMessage or message.content == "")
+            if not (
+                type(message) is AIMessage
+                or type(message.content) == list
+                or type(message) is ToolMessage
+            )  # Content list means tool call
         ]
         return new_messages
     else:
@@ -46,7 +50,11 @@ def clean_tools(messages: list):
         new_messages = [
             message
             for message in messages
-            if not (type(message) is ToolMessage or message.content == "")
+            if not (
+                type(message) is AIMessage
+                or type(message.content) == list
+                or type(message) is ToolMessage
+            )
         ]
         new_messages.append(last_tool)
         return new_messages
@@ -137,19 +145,18 @@ def call_orchestrator_agent(state: State):
     to determine the agent to call next.
     Use the tool, dont answer directly.
     Read the chat history to determine the action to take.
-    To know which cateogires we offer use the conversational agent
+    To know which categories we offer, use the conversational agent
     """
     messages = clean_tools(state["messages"].copy())
     latest_user_prompt = messages[-1].content
     messages.append(SystemMessage(content=prompt))
-    messages.append(HumanMessage(content=latest_user_prompt))
     response = orchestration_model.invoke(messages)
 
     return {"messages": [response], "latest_user_prompt": latest_user_prompt}
 
 
 def call_conversation_agent(state: State):
-    prompt = """Your name is utn-bot. You are a helphul assistant that solves user questions about this ecommerce.
+    prompt = """Your name is utn-bot. You are a helpful assistant that solves user questions about this ecommerce.
             The ecommerce is called utn-shop. We sell these categories: tv, cellphone, laptop.
             We are open everyday from 9am to 5pm. We are located at 1234 Main St, Anytown, USA.
             Our payment methods are credit card, paypal, bitcoin and mercado pago."""
