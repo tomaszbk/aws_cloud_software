@@ -10,7 +10,7 @@ from langgraph.prebuilt import ToolNode
 from app.config import cfg
 from app.database.dynamo_get import get_product_details, get_products
 from app.database.dynamo_insert import add_purchase, insert_user
-from app.database.models import Category, Product, User
+from app.database.models import Category, Product, User, OrchestrationAction
 from app.send_event import send_event_to_eventbridge
 
 router = APIRouter()
@@ -33,46 +33,36 @@ class State(TypedDict):
     latest_user_prompt: str
 
 
-def clean_tools(messages: list):
-    if messages[-1].content in ["NORMAL_CONVERSATION", "GET_PRODUCTS", "PURCHASE"]:
-        new_messages = [
-            message
-            for message in messages
-            if not (
-                type(message) is AIMessage
-                or type(message.content) == list
-                or type(message) is ToolMessage
-            )  # Content list means tool call
-        ]
-        return new_messages
-    else:
-        last_tool = messages.pop()
-        new_messages = [
-            message
-            for message in messages
-            if not (
-                type(message) is AIMessage
-                or type(message.content) == list
-                or type(message) is ToolMessage
-            )
-        ]
-        new_messages.append(last_tool)
-        return new_messages
+def merge_tools(messages: list):
+    for index, message in enumerate(messages):
+        if type(message) is AIMessage and type(message.content[0]) == dict:
+            if message.content[0]["type"] == "tool_use":
+                print("tool_use found")
+                tool_use_message = messages.pop(index)
+                tool_name = tool_use_message.content[0]["name"]
+                next_message = messages[index]
+                if type(next_message) is ToolMessage:
+                    print("tool_message found")
+                    tool_message = messages.pop(index)
+                    messages.insert(
+                        index,
+                        AIMessage(
+                            "The "
+                            + tool_name
+                            + " tool was called and the result was "
+                            + tool_message.content
+                        ),
+                    )
+    return messages
 
 
 # TOOLS
-def choose_action(action: str):
+def choose_action(action: OrchestrationAction):
     """Chooses the action to use based on the chat history.
     NORMAL_CONVERSATION : if the user asks about the business, what we offer, what categories of products we have, who we are, or none of below.
     GET_PRODUCTS : if the user specifies the category of products he wants to see, or wants to get details of a product.
-    PURCHASE : if the user wants to purchase a product."""
+    PURCHASE : if the user wants to purchase a product, or is in the middle of a purchase process."""
     return action
-
-
-def get_products_list(category: Category) -> list[Product]:
-    """Returns list of products in the specified category."""
-    products = get_products(category)
-    return [(product.name, product.price) for product in products]
 
 
 def get_product_details_tool(product_id: str) -> Product:
@@ -94,12 +84,12 @@ def route_agent(state: State):
     return action
 
 
-def make_purchase(product_id: str, user_name: str, user_email: str, user_phone_number) -> str:
+def make_purchase(product_id: str, product_category: Category, user_name: str, user_email: str, user_phone_number) -> str:
     """Makes a purchase for the specified product and user.
     The user data must be provided as a dictionary, NOT a string."""
     user = User(name=user_name, email=user_email, phone_number=user_phone_number)
     insert_user(user)
-    product = get_product_details(product_id)
+    product = get_product_details(product_id, product_category)
     add_purchase(user.phone_number, product)
 
     success_message = (
@@ -110,9 +100,16 @@ def make_purchase(product_id: str, user_name: str, user_email: str, user_phone_n
     return success_message
 
 
-def get_user_data():
-    """Requests the user to provide their name, email and phone number."""
-    return "Please provide your name, email and phone number."
+def get_user_data(user_language: str) -> str:
+    """Requests the user to provide their name, email and phone number. 
+    Requires the user's language: es or en."""
+    match user_language:
+        case "es":
+            return "Por favor, proporciona tu nombre, email y número de teléfono."
+        case "en":
+            return "Please provide your name, email and phone number."
+        case _:
+            return f"(Debug: opcion no valida: {user_language})Please provide your name, email and phone number."
 
 
 orchestration_tools = [choose_action]
@@ -121,7 +118,7 @@ orchestration_model = llm.bind_tools(orchestration_tools)
 
 conversation_model = llm
 
-products_tools = [get_products, get_product_details]
+products_tools = [get_products]
 products_tools_node = ToolNode(products_tools)
 products_model = llm.bind_tools(products_tools)
 
@@ -147,7 +144,7 @@ def call_orchestrator_agent(state: State):
     Read the chat history to determine the action to take.
     To know which categories we offer, use the conversational agent
     """
-    messages = clean_tools(state["messages"].copy())
+    messages = merge_tools(state["messages"].copy())
     latest_user_prompt = messages[-1].content
     messages.append(SystemMessage(content=prompt))
     response = orchestration_model.invoke(messages)
@@ -160,7 +157,7 @@ def call_conversation_agent(state: State):
             The ecommerce is called utn-shop. We sell these categories: tv, cellphone, laptop.
             We are open everyday from 9am to 5pm. We are located at 1234 Main St, Anytown, USA.
             Our payment methods are credit card, paypal, bitcoin and mercado pago."""
-    messages = clean_tools(state["messages"].copy())
+    messages = merge_tools(state["messages"].copy())
     messages.append(SystemMessage(content=prompt))
     messages.append(HumanMessage(state["latest_user_prompt"]))
     response = conversation_model.invoke(messages)
@@ -170,12 +167,12 @@ def call_conversation_agent(state: State):
 def call_products_agent(state: State):
     prompt = """You're an agent that can access the products database.
     We have the following categories of products: tv, cellphone, laptop.
-    Do not offer products that were not returned from a tool call."""
+    Do not offer products that were not returned from a tool call.
+    """
     messages = state["messages"]
-    if messages[-1].content == "GET_PRODUCTS":
-        messages = clean_tools(messages.copy())
-        messages.append(SystemMessage(content=prompt))
-        messages.append(HumanMessage(state["latest_user_prompt"]))
+    messages = merge_tools(messages.copy())
+    messages.append(SystemMessage(content=prompt))
+    messages.append(HumanMessage(state["latest_user_prompt"]))
     response = products_model.invoke(messages)
     return {"messages": [response]}
 
@@ -184,7 +181,7 @@ def call_purchase_agent(state: State):
     prompt = """You're an agent that will handle the purchase of a product.
     If the user hasn't provided his name and email, ask for it.
     """
-    messages = clean_tools(state["messages"].copy())
+    messages = merge_tools(state["messages"].copy())
     messages.append(SystemMessage(content=prompt))
     messages.append(HumanMessage(state["latest_user_prompt"]))
     response = purchase_model.invoke(messages)
@@ -214,7 +211,7 @@ workflow.add_node("purchase_tools", purchase_tools_node)
 workflow.add_edge(START, "orchestration_agent")
 workflow.add_edge("orchestration_agent", "orchestration_tools")
 
-workflow.add_edge("products_tools", "products_agent")
+workflow.add_edge("products_tools", "conversation_agent")
 
 workflow.add_conditional_edges(
     "orchestration_tools",
@@ -244,7 +241,7 @@ app = workflow.compile(checkpointer=checkpointer)
 
 
 @router.post("/user-message")
-async def hanlde_user_message(user_prompt: str, thread_id: str):
+async def handle_user_message(user_prompt: str, thread_id: str):
     final_state = app.invoke(
         {"messages": [HumanMessage(content=user_prompt)]},
         config={"configurable": {"thread_id": thread_id}},

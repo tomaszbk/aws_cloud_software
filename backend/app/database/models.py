@@ -17,6 +17,11 @@ class Category(str, Enum):
     cellphone = "cellphone"
     laptop = "laptop"
 
+class OrchestrationAction(str, Enum):
+    NORMAL_CONVERSATION = "NORMAL_CONVERSATION"
+    GET_PRODUCTS = "GET_PRODUCTS"
+    PURCHASE = "PURCHASE"
+
 
 class Product(BaseModel):
     product_id: str = str(uuid.uuid4())
