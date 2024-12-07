@@ -8,6 +8,7 @@ from langgraph.prebuilt import ToolNode
 from langchain_aws import ChatBedrockConverse
 
 
+
 llm = ChatBedrockConverse(
         model="us.meta.llama3-2-11b-instruct-v1:0",
         region_name="us-west-2",
@@ -17,22 +18,36 @@ llm = ChatBedrockConverse(
 class State(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
 
+def merge_tools(messages: list ):
+    for index, message in enumerate(messages):
+        if type(message) is AIMessage and message.content[0]['type'] == 'tool_use':
+            print("tool_use found")
+            tool_use_message = messages.pop(index)
+            tool_name = tool_use_message.content[0]['name']
+            next_message = messages[index]
+            if type(next_message) is ToolMessage:
+                print("tool_message found")
+                tool_message = messages.pop(index)
+                messages.insert(index, AIMessage("The " + tool_name + " tool was called and the result was " + tool_message.content))
+    return messages
+    
 
 graph_builder = StateGraph(State)
 
 def call_chatbot_agent(state: State):
-    prompt = """You're an  agent that will call the numbers_tool tool
-    if it hasnt been called yet.
-    Use the tool, dont answer directly, otherwise end.
-    Read the chat history to determine the action to take.
+    prompt = """You're an  agent that will call the numbers_tool tool.
+    Use the tool, dont answer directly.
+    Read the chat history to determine the numbers.
     """
-    return {"messages": [chat_model.invoke(state["messages"])]}
+    print("chatbot_agent called")
+    messages = merge_tools(state["messages"].copy())
+    #messages = state["messages"].copy()
+    return {"messages": [chat_model.invoke(messages)]}
 
 def numbers():
     """Prints numbers."""
-    print("example")
+    print("numbers tool called")
     return "123456"
-
 
 
 numbers_tools = [numbers]
@@ -55,25 +70,24 @@ checkpointer = MemorySaver()
 app = graph_builder.compile(checkpointer=checkpointer)
 
 
+
 def stream_graph_updates(user_input: str):
     for event in app.stream({"messages": [("user", user_input)]},
                             config={"configurable": {"thread_id": 1}}):
         for value in event.values():
             print("Assistant:", value["messages"][-1].content)
 
+print("user: gimme numbers")
+stream_graph_updates("gimme numbers")
+print("user: again")
+stream_graph_updates("again")
+print("user: again2")
+stream_graph_updates("again")
+print("user: again3")
+stream_graph_updates("again")
+print("user: again")
+stream_graph_updates("again")
+print("user: again2")
 
 
-while True:
-    try:
-        user_input = input("User: ")
-        if user_input.lower() in ["quit", "exit", "q"]:
-            print("Goodbye!")
-            break
 
-        stream_graph_updates(user_input)
-    except:
-        # fallback if input() is not available
-        user_input = "What do you know about LangGraph?"
-        print("User: " + user_input)
-        stream_graph_updates(user_input)
-        break
