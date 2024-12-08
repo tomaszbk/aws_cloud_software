@@ -10,10 +10,11 @@ client = boto3.client(
 )
 
 
-def send_event_to_eventbridge(destiny_email: str, user_name: str):
+def send_event_to_eventbridge(destiny_email: str, user_name: str, product_image_url: str):
     event_detail = {
         "destiny_email": destiny_email,  # This matches the Go Lambda's struct
         "destiny_name": user_name,
+        "product_image_url": product_image_url,
     }
     response = client.put_events(
         Entries=[

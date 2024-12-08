@@ -11,14 +11,19 @@ import (
 )
 
 type RequestEvent struct {
-	DestinyEmail string `json:"destiny_email"`
-	DestinyName  string `json:"destiny_name"`
+	DestinyEmail    string `json:"destiny_email"`
+	DestinyName     string `json:"destiny_name"`
+	ProductImageUrl string `json:"product_image_url"`
 }
 
 const message string = `
-Purchase complete! Thank you for your purchase, %s.
-
-Best regards, utn-shop`
+<html>
+<body>
+<p>Purchase complete! Thank you for your purchase, %s.</p>
+<img src="%s" alt="Product Image">
+<p>Best regards, utn-shop</p>
+</body>
+</html>`
 
 func handler(ctx context.Context, event RequestEvent) (events.APIGatewayProxyResponse, error) {
 	// Create a new email message
@@ -29,12 +34,12 @@ func handler(ctx context.Context, event RequestEvent) (events.APIGatewayProxyRes
 
 	m.SetHeader("From", cfg.SenderEmail)
 	m.SetHeader("To", destinyEmail)
-	m.SetHeader("Subject", "Hello from Lambda!")
-	m.SetBody("text/plain", fmt.Sprintf(message, event.DestinyName))
+	m.SetHeader("Subject", "Thanks for your purchase!")
+	m.SetBody("text/html", fmt.Sprintf(message, event.DestinyName, event.ProductImageUrl))
 	// Send the email using SMTP
 	fmt.Println("Sending email...")
 	fmt.Println("Username:", cfg.SenderEmail)
-	fmt.Println("Password:", cfg.SenderPassword)
+
 	d := gomail.NewDialer("smtp.gmail.com", 587, cfg.SenderEmail, cfg.SenderPassword)
 	if err := d.DialAndSend(m); err != nil {
 		log.Println("Failed to send email:", err)

@@ -34,6 +34,8 @@ services:
     environment:
       - SENDER_EMAIL=${SENDER_EMAIL}
       - SENDER_PASSWORD=${SENDER_PASSWORD}
+    env_file:
+      - .env
     entrypoint: ["/usr/local/bin/aws-lambda-rie"]
     command: ["./main"]
 

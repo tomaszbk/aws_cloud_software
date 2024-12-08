@@ -10,7 +10,7 @@ from langgraph.prebuilt import ToolNode
 from app.config import cfg
 from app.database.dynamo_get import get_product_details, get_products
 from app.database.dynamo_insert import add_purchase, insert_user
-from app.database.models import Category, Product, User, OrchestrationAction
+from app.database.models import Category, OrchestrationAction, Product, User
 from app.send_event import send_event_to_eventbridge
 
 router = APIRouter()
@@ -84,24 +84,26 @@ def route_agent(state: State):
     return action
 
 
-def make_purchase(product_id: str, product_category: Category, user_name: str, user_email: str, user_phone_number) -> str:
+def make_purchase(
+    product_id: str, product_category: Category, user_name: str, user_email: str, user_phone_number
+) -> str:
     """Makes a purchase for the specified product and user.
     The user data must be provided as a dictionary, NOT a string."""
     user = User(name=user_name, email=user_email, phone_number=user_phone_number)
     insert_user(user)
-    product = get_product_details(product_id, product_category)
+    product: Product = get_product_details(product_id, product_category)
     add_purchase(user.phone_number, product)
 
     success_message = (
         f"Purchase successful for product {product_id} by user {user_name} {user_email}."
     )
     print(success_message)
-    send_event_to_eventbridge(user_email, user_name)
+    send_event_to_eventbridge(user_email, user_name, product.image_url)
     return success_message
 
 
 def get_user_data(user_language: str) -> str:
-    """Requests the user to provide their name, email and phone number. 
+    """Requests the user to provide their name, email and phone number.
     Requires the user's language: es or en."""
     match user_language:
         case "es":
