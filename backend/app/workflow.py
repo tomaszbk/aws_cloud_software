@@ -34,15 +34,14 @@ class State(TypedDict):
 
 
 def merge_tools(messages: list):
+    print("merge_tools called")
     for index, message in enumerate(messages):
-        if type(message) is AIMessage and type(message.content[0]) == dict:
+        if type(message) is AIMessage and type(message.content[0]) is dict:
             if message.content[0]["type"] == "tool_use":
-                print("tool_use found")
                 tool_use_message = messages.pop(index)
                 tool_name = tool_use_message.content[0]["name"]
                 next_message = messages[index]
                 if type(next_message) is ToolMessage:
-                    print("tool_message found")
                     tool_message = messages.pop(index)
                     messages.insert(
                         index,
