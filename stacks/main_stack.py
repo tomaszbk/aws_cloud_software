@@ -50,6 +50,10 @@ class MainStack(Stack):
         # Add the Lambda function as a target to the EventBridge rule
         event_rule.add_target(events_targets.LambdaFunction(email_lambda,
                                                             event=events.RuleTargetInput.from_object(
-                                                                {"destiny_email": events.EventField.from_path("$.detail.destiny_email"),
-                                                                 "destiny_name": events.EventField.from_path("$.detail.destiny_name")})))
+                                                                {
+                                                                "destiny_email": events.EventField.from_path("$.detail.destiny_email"),
+                                                                "destiny_name": events.EventField.from_path("$.detail.destiny_name"),
+                                                                "product_image_url": events.EventField.from_path("$.detail.product_image_url"),
+                                                                 }
+                                                                 )))
 
