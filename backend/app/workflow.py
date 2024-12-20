@@ -46,10 +46,7 @@ def merge_tools(messages: list):
                     messages.insert(
                         index,
                         AIMessage(
-                            "The "
-                            + tool_name
-                            + " tool was called and the result was "
-                            + tool_message.content
+                            f"The {tool_name} tool was called and the result was {str(tool_message.content)}"
                         ),
                     )
     return messages
