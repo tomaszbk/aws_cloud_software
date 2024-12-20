@@ -91,14 +91,11 @@ def make_purchase(
     user = User(name=user_name, email=user_email, phone_number=user_phone_number)
     insert_user(user)
     product: Product = get_product_details(product_id, product_category)
-    add_purchase(user.phone_number, product)
+    purchase_result = add_purchase(user.phone_number, product)
 
-    success_message = (
-        f"Purchase successful for product {product_id} by user {user_name} {user_email}."
-    )
-    print(success_message)
+    print(purchase_result)
     send_event_to_eventbridge(user_email, user_name, product.image_url)
-    return success_message
+    return purchase_result
 
 
 def get_user_data(user_language: str) -> str:

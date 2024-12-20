@@ -5,8 +5,7 @@ from app.database.models import Product, User
 def insert_user(user: User):
     try:
         response = users_table.put_item(
-            Item=user.model_dump(),
-            ConditionExpression='attribute_not_exists(phone_number)'
+            Item=user.model_dump(), ConditionExpression="attribute_not_exists(phone_number)"
         )
         print("Item inserted successfully:", response)
     except Exception as e:
@@ -33,6 +32,8 @@ def add_purchase(user_phone_number: str, product: Product):
                 ":empty_list": [],  # Empty list to initialize purchases if it doesn't exist
             },
         )
-        print("Item inserted successfully:", response)
+        print(
+            f"Item inserted successfully: {response}, for product {product.product_id}, {product.name}"
+        )
     except Exception as e:
         print("Unexpected error:", e)
