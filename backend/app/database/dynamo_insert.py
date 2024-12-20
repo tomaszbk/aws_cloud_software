@@ -32,8 +32,10 @@ def add_purchase(user_phone_number: str, product: Product):
                 ":empty_list": [],  # Empty list to initialize purchases if it doesn't exist
             },
         )
-        print(
-            f"Item inserted successfully: {response}, for product {product.product_id}, {product.name}"
-        )
+        message = f"Item inserted successfully: {response}, for product {product.product_id}, {product.name}"
+        print(message)
+        return message
     except Exception as e:
-        print("Unexpected error:", e)
+        message = f"Unexpected error: {e}"
+        print(message)
+        return message
